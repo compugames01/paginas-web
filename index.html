@@ -1,0 +1,49 @@
+
+<!DOCTYPE html>
+<html lang="es" class="">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tienda de Abarrotes Fresco</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    // Evita el parpadeo del tema al cargar la página
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#4CAF50',
+            'primary-dark': '#388E3C',
+            'primary-light': '#C8E6C9',
+            accent: '#FFC107',
+            'text-primary': '#4CAF50',
+            'text-secondary': '#4B5563',
+            divider: '#BDBDBD',
+          },
+        }
+      }
+    }
+    </script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/"
+  }
+}
+</script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-text-primary dark:text-gray-200 transition-colors duration-300">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>

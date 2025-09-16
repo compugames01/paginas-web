@@ -1,0 +1,5 @@
+{
+  "name": "Tienda de Abarrotes Fresco",
+  "description": "Una aplicación web para una tienda de abarrotes que permite a los usuarios explorar productos, gestionar su carrito de compras y ver información de la tienda.",
+  "requestFramePermissions": []
+}
