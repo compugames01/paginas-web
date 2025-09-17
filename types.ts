@@ -1,4 +1,5 @@
-export type Page = 'home' | 'catalog' | 'cart' | 'login' | 'register' | 'confirmation' | 'productDetail' | 'wishlist' | 'checkout' | 'account';
+
+export type Page = 'home' | 'catalog' | 'cart' | 'login' | 'register' | 'confirmation' | 'productDetail' | 'wishlist' | 'checkout' | 'account' | 'forgotPassword';
 
 export interface Address {
     id: number;

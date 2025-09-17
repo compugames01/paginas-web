@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -11,6 +12,7 @@ import AccountPage from './components/AccountPage';
 import ConfirmationPage from './components/ConfirmationPage';
 import ProductDetailPage from './components/ProductDetailPage';
 import WishlistPage from './components/WishlistPage';
+import ForgotPasswordPage from './components/ForgotPasswordPage';
 import { Page, CartItem, Product, User, Order, Review, Address, PaymentMethod } from './types';
 import { MOCK_PRODUCTS } from './constants';
 
@@ -276,6 +278,18 @@ const App: React.FC = () => {
         }
     }, [currentUser]);
 
+    const handleDeleteAccount = useCallback((email: string) => {
+        const userIndex = mockUsers.findIndex(u => u.email === email);
+        if (userIndex > -1) {
+            mockUsers.splice(userIndex, 1);
+            handleLogout();
+            alert('Tu cuenta ha sido eliminada exitosamente.');
+            return true;
+        }
+        alert('No se pudo encontrar la cuenta para eliminar.');
+        return false;
+    }, [handleLogout]);
+
 
     const cartItemCount = useMemo(() => {
         return cart.reduce((total, item) => total + item.quantity, 0);
@@ -292,7 +306,13 @@ const App: React.FC = () => {
                     cartItems={cart} 
                     onUpdateQuantity={updateCartQuantity} 
                     onRemoveFromCart={removeFromCart} 
-                    onNavigateToCheckout={() => setCurrentPage('checkout')}
+                    onNavigateToCheckout={() => {
+                        if (currentUser) {
+                            setCurrentPage('checkout');
+                        } else {
+                            setCurrentPage('login');
+                        }
+                    }}
                 />;
             case 'checkout':
                 const subtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
@@ -304,9 +324,11 @@ const App: React.FC = () => {
                     onBackToCart={() => setCurrentPage('cart')}
                 />;
             case 'login':
-                return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setCurrentPage('register')} />;
+                return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setCurrentPage('register')} onNavigateToForgotPassword={() => setCurrentPage('forgotPassword')} />;
             case 'register':
                 return <RegisterPage onRegister={handleRegister} onNavigateToLogin={() => setCurrentPage('login')} />;
+            case 'forgotPassword':
+                return <ForgotPasswordPage onNavigateToLogin={() => setCurrentPage('login')} />;
             case 'confirmation':
                 return confirmedOrder ? <ConfirmationPage order={confirmedOrder} onGoHome={() => setCurrentPage('home')} /> : <HomePage products={products} onAddToCart={addToCart} onViewDetails={handleViewDetails} />;
             case 'productDetail':
@@ -316,7 +338,7 @@ const App: React.FC = () => {
                  return <WishlistPage products={wishlistProducts} onToggleWishlist={handleToggleWishlist} onAddToCart={addToCart} onViewDetails={handleViewDetails} />;
             case 'account':
                 if (!currentUser) {
-                    return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setCurrentPage('register')} />;
+                    return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setCurrentPage('register')} onNavigateToForgotPassword={() => setCurrentPage('forgotPassword')} />;
                 }
                 return <AccountPage 
                     user={currentUser}
@@ -327,6 +349,7 @@ const App: React.FC = () => {
                     onDeleteAddress={handleDeleteAddress}
                     onAddPaymentMethod={handleAddPaymentMethod}
                     onDeletePaymentMethod={handleDeletePaymentMethod}
+                    onDeleteAccount={handleDeleteAccount}
                     onLogout={handleLogout}
                 />;
             default:
@@ -337,7 +360,7 @@ const App: React.FC = () => {
     return (
         <div className="flex flex-col min-h-screen font-sans">
             <Header setCurrentPage={setCurrentPage} cartItemCount={cartItemCount} wishlistItemCount={wishlist.length} currentUser={currentUser} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
-            <main className="flex-grow container mx-auto px-4 py-8">
+            <main className="flex-grow container mx-auto px-2 sm:px-4 py-8">
                 {renderPage()}
             </main>
             <Footer />
