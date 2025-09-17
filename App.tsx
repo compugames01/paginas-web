@@ -18,14 +18,30 @@ import * as api from './services/api';
 
 
 const App: React.FC = () => {
-    const [currentPage, setCurrentPage] = useState<Page>('home');
-    const [cart, setCart] = useState<CartItem[]>([]);
-    const [wishlist, setWishlist] = useState<number[]>([]);
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [currentPage, setCurrentPage] = useState<Page>(() => {
+        const savedPage = localStorage.getItem('currentPage');
+        return (savedPage as Page) || 'home';
+    });
+    const [cart, setCart] = useState<CartItem[]>(() => {
+        const savedCart = localStorage.getItem('cart');
+        return savedCart ? JSON.parse(savedCart) : [];
+    });
+    const [wishlist, setWishlist] = useState<number[]>(() => {
+        const savedWishlist = localStorage.getItem('wishlist');
+        return savedWishlist ? JSON.parse(savedWishlist) : [];
+    });
+    const [currentUser, setCurrentUser] = useState<User | null>(() => {
+        const savedUser = localStorage.getItem('currentUser');
+        return savedUser ? JSON.parse(savedUser) : null;
+    });
     const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
     const [products, setProducts] = useState<Product[]>([]);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-    const [orderHistory, setOrderHistory] = useState<Order[]>([]);
+    const [allOrderHistories, setAllOrderHistories] = useState<Record<string, Order[]>>(() => {
+        const saved = localStorage.getItem('allOrderHistories');
+        return saved ? JSON.parse(saved) : {};
+    });
+
     const [theme, setTheme] = useState<'light' | 'dark'>(() => {
         if (typeof window !== 'undefined' && localStorage.theme) {
             return localStorage.theme;
@@ -35,7 +51,28 @@ const App: React.FC = () => {
         }
         return 'light';
     });
-     const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const orderHistory = useMemo(() => {
+        if (!currentUser) return [];
+        return allOrderHistories[currentUser.email] || [];
+    }, [currentUser, allOrderHistories]);
+
+    // --- Persist State to localStorage ---
+    useEffect(() => { localStorage.setItem('currentPage', currentPage); }, [currentPage]);
+    useEffect(() => { localStorage.setItem('cart', JSON.stringify(cart)); }, [cart]);
+    useEffect(() => { localStorage.setItem('wishlist', JSON.stringify(wishlist)); }, [wishlist]);
+    useEffect(() => {
+        if (currentUser) {
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        } else {
+            localStorage.removeItem('currentUser');
+        }
+    }, [currentUser]);
+    useEffect(() => {
+        localStorage.setItem('allOrderHistories', JSON.stringify(allOrderHistories));
+    }, [allOrderHistories]);
+
 
     useEffect(() => {
         const root = window.document.documentElement;
@@ -138,7 +175,7 @@ const App: React.FC = () => {
         shippingAddress: Address,
         paymentMethod: PaymentMethod
     ) => {
-        if (items.length === 0) return;
+        if (items.length === 0 || !currentUser) return;
         
         const newOrder: Order = {
             id: `FRESCO-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
@@ -151,10 +188,16 @@ const App: React.FC = () => {
         };
         
         setConfirmedOrder(newOrder);
-        setOrderHistory(prev => [...prev, newOrder]);
+        setAllOrderHistories(prev => {
+            const userHistory = prev[currentUser.email] || [];
+            return {
+                ...prev,
+                [currentUser.email]: [...userHistory, newOrder]
+            };
+        });
         clearCart();
         setCurrentPage('confirmation');
-    }, [clearCart]);
+    }, [clearCart, currentUser]);
     
     const handleViewDetails = useCallback((product: Product) => {
         setSelectedProduct(product);

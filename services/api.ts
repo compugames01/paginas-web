@@ -1,9 +1,40 @@
 
-import { MOCK_PRODUCTS, mockUsers } from '../constants';
+import { MOCK_PRODUCTS, mockUsers as initialUsers } from '../constants';
 import { Product, User, Review, Address, PaymentMethod } from '../types';
+
+type MockUserWithPassword = User & { password: string };
 
 // Simulate network delay
 const apiDelay = 500;
+
+// =================================
+// Data Persistence Layer
+// =================================
+
+// Load users from localStorage or initialize from constants
+let mockUsers: MockUserWithPassword[] = (() => {
+    try {
+        const storedUsers = localStorage.getItem('mockUsersDB');
+        if (storedUsers) {
+            return JSON.parse(storedUsers);
+        }
+    } catch (error) {
+        console.error("Failed to parse mock users from localStorage", error);
+    }
+    const initialData = JSON.parse(JSON.stringify(initialUsers)); // Deep copy
+    localStorage.setItem('mockUsersDB', JSON.stringify(initialData));
+    return initialData;
+})();
+
+// Helper to save users state to localStorage
+const saveUsers = () => {
+    try {
+        localStorage.setItem('mockUsersDB', JSON.stringify(mockUsers));
+    } catch (error) {
+        console.error("Failed to save mock users to localStorage", error);
+    }
+};
+
 
 // =================================
 // Product API
@@ -74,8 +105,9 @@ export const register = (name: string, email: string, password: string, phone: s
                 resolve({ success: false, message: 'Este correo electrónico ya está registrado.', user: null });
                 return;
             }
-            const newUser = { name, email, password, phone: `+51 ${phone}`, addresses: [], paymentMethods: [] };
+            const newUser: MockUserWithPassword = { name, email, password, phone: `+51 ${phone}`, addresses: [], paymentMethods: [] };
             mockUsers.push(newUser);
+            saveUsers();
             const { password: pw, ...userWithoutPassword } = newUser;
             console.log("API: Registration successful.");
             resolve({ success: true, message: 'Registro exitoso.', user: userWithoutPassword });
@@ -139,6 +171,7 @@ export const updateUser = (
             user.email = newEmail;
             user.phone = newPhone;
             mockUsers[userIndex] = user;
+            saveUsers();
 
             const { password, ...updatedUser } = user;
             console.log("API: Profile updated successfully.");
@@ -154,6 +187,7 @@ export const deleteAccount = (email: string): Promise<boolean> => {
             const userIndex = mockUsers.findIndex(u => u.email === email);
             if (userIndex > -1) {
                 mockUsers.splice(userIndex, 1);
+                saveUsers();
                 console.log("API: Account deleted successfully.");
                 resolve(true);
             } else {
@@ -177,7 +211,7 @@ const findUserByEmail = (email: string) => {
     return null;
 };
 
-const sanitizeUser = (user: any): User => {
+const sanitizeUser = (user: MockUserWithPassword): User => {
     const { password, ...sanitized } = user;
     return JSON.parse(JSON.stringify(sanitized));
 };
@@ -191,6 +225,7 @@ export const addAddress = (userEmail: string, addressData: Omit<Address, 'id'>):
             const newAddress: Address = { ...addressData, id: Date.now() };
             result.user.addresses = [...(result.user.addresses || []), newAddress];
             mockUsers[result.index] = result.user;
+            saveUsers();
 
             resolve(sanitizeUser(result.user));
         }, apiDelay);
@@ -205,6 +240,7 @@ export const updateAddress = (userEmail: string, address: Address): Promise<User
 
             result.user.addresses = (result.user.addresses || []).map(a => a.id === address.id ? address : a);
             mockUsers[result.index] = result.user;
+            saveUsers();
 
             resolve(sanitizeUser(result.user));
         }, apiDelay);
@@ -219,6 +255,7 @@ export const deleteAddress = (userEmail: string, addressId: number): Promise<Use
 
             result.user.addresses = (result.user.addresses || []).filter(a => a.id !== addressId);
             mockUsers[result.index] = result.user;
+            saveUsers();
 
             resolve(sanitizeUser(result.user));
         }, apiDelay);
@@ -234,6 +271,7 @@ export const addPaymentMethod = (userEmail: string, paymentData: Omit<PaymentMet
             const newPaymentMethod: PaymentMethod = { ...paymentData, id: Date.now() };
             result.user.paymentMethods = [...(result.user.paymentMethods || []), newPaymentMethod];
             mockUsers[result.index] = result.user;
+            saveUsers();
 
             resolve(sanitizeUser(result.user));
         }, apiDelay);
@@ -249,6 +287,7 @@ export const deletePaymentMethod = (userEmail: string, paymentMethodId: number):
 
             result.user.paymentMethods = (result.user.paymentMethods || []).filter(p => p.id !== paymentMethodId);
             mockUsers[result.index] = result.user;
+            saveUsers();
 
             resolve(sanitizeUser(result.user));
         }, apiDelay);

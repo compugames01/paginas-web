@@ -18,7 +18,7 @@ interface AccountPageProps {
     onDeleteAddress: (addressId: number) => void;
     onAddPaymentMethod: (paymentData: Omit<PaymentMethod, 'id'>) => void;
     onDeletePaymentMethod: (paymentMethodId: number) => void;
-    onDeleteAccount: (email: string) => void;
+    onDeleteAccount: (email: string) => Promise<boolean>;
     onLogout: () => void;
 }
 
@@ -91,6 +91,7 @@ const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateU
 
     // Delete Account State
     const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
+    const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
 
     // Support Form State
     const [supportSubject, setSupportSubject] = useState('');
@@ -236,7 +237,10 @@ const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateU
                                 </p>
                                 <div className="mt-4">
                                     <button
-                                        onClick={() => setIsDeleteAccountModalOpen(true)}
+                                        onClick={() => {
+                                            setIsDeleteAccountModalOpen(true);
+                                            setDeleteConfirmationText('');
+                                        }}
                                         className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
                                     >
                                         Eliminar Cuenta
@@ -344,16 +348,32 @@ const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateU
                     <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl max-w-sm w-full transform transition-all" role="document">
                         <h3 className="text-xl font-bold text-text-primary dark:text-white">¿Estás seguro?</h3>
                         <p className="mt-4 text-text-secondary dark:text-gray-400">
-                            Estás a punto de eliminar tu cuenta permanentemente. Esta acción es irreversible y todos tus datos, incluyendo historial de pedidos y direcciones, se perderán.
+                            Estás a punto de eliminar tu cuenta permanentemente. Esta acción es irreversible y todos tus datos se perderán.
                         </p>
+                        <div className="mt-4">
+                            <label htmlFor="delete-confirm" className="text-sm font-medium text-text-secondary dark:text-gray-400">
+                                Para confirmar, escribe <strong className="text-red-500">ELIMINAR</strong> en el campo de abajo.
+                            </label>
+                            <input
+                                id="delete-confirm"
+                                type="text"
+                                value={deleteConfirmationText}
+                                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                                className="mt-2 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm bg-white dark:bg-gray-700 text-text-primary dark:text-gray-200"
+                            />
+                        </div>
                         <div className="mt-6 flex justify-end space-x-4">
                             <button onClick={() => setIsDeleteAccountModalOpen(false)} className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg transition-colors">
                                 Cancelar
                             </button>
-                            <button onClick={() => {
-                                onDeleteAccount(user.email);
-                                setIsDeleteAccountModalOpen(false);
-                            }} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                            <button
+                                onClick={() => {
+                                    onDeleteAccount(user.email);
+                                    setIsDeleteAccountModalOpen(false);
+                                }}
+                                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:bg-red-400 disabled:cursor-not-allowed dark:disabled:bg-red-800"
+                                disabled={deleteConfirmationText !== 'ELIMINAR'}
+                            >
                                 Sí, Eliminar Cuenta
                             </button>
                         </div>
