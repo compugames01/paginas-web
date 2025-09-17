@@ -126,6 +126,8 @@ const App: React.FC = () => {
 
     const handleLogout = useCallback(() => {
         setCurrentUser(null);
+        setCart([]);
+        setWishlist([]);
         setCurrentPage('home');
     }, []);
 
@@ -267,13 +269,18 @@ const App: React.FC = () => {
     const handleDeleteAccount = useCallback(async (email: string) => {
         const result = await api.deleteAccount(email);
         if (result) {
+            setAllOrderHistories(prev => {
+                const newHistories = { ...prev };
+                delete newHistories[email];
+                return newHistories;
+            });
             handleLogout();
-            alert('Tu cuenta ha sido eliminada exitosamente.');
+            alert('Tu cuenta y todos tus datos asociados han sido eliminados exitosamente.');
             return true;
         }
         alert('No se pudo encontrar la cuenta para eliminar.');
         return false;
-    }, [handleLogout]);
+    }, [handleLogout, setAllOrderHistories]);
 
 
     const cartItemCount = useMemo(() => {
