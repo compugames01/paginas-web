@@ -40,14 +40,22 @@ const saveUsers = () => {
 // Product API
 // =================================
 
-export const fetchProducts = (): Promise<Product[]> => {
-    console.log("API: Fetching all products...");
-    return new Promise(resolve => {
-        setTimeout(() => {
-            console.log("API: Products fetched successfully.");
-            resolve(JSON.parse(JSON.stringify(MOCK_PRODUCTS))); // Deep copy to prevent mutation
-        }, apiDelay);
-    });
+export const fetchProducts = async (): Promise<Product[]> => {
+    console.log("API: Fetching all products from Netlify function...");
+    try {
+        // This now makes a real network request to our serverless backend function.
+        const response = await fetch('/.netlify/functions/products');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const products: Product[] = await response.json();
+        console.log("API: Products fetched successfully from function.");
+        return products;
+    } catch (error) {
+        console.error("API: Failed to fetch products from function, falling back to local mock data.", error);
+        // Fallback to local mock data in case the function fails during development
+        return JSON.parse(JSON.stringify(MOCK_PRODUCTS));
+    }
 };
 
 export const submitReview = (productId: number, author: string, reviewData: { rating: number, comment: string }): Promise<Product | null> => {

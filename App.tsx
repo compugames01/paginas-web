@@ -46,7 +46,10 @@ const App: React.FC = () => {
         return saved ? JSON.parse(saved) : {};
     });
     const [passwordResetInfo, setPasswordResetInfo] = useState<{ email: string; token: string } | null>(null);
-    const [verificationInfo, setVerificationInfo] = useState<{ email: string; token: string } | null>(null);
+    const [verificationInfo, setVerificationInfo] = useState<{ email: string; token: string } | null>(() => {
+        const saved = localStorage.getItem('verificationInfo');
+        return saved ? JSON.parse(saved) : null;
+    });
     const [toasts, setToasts] = useState<Toast[]>([]);
 
     const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -97,6 +100,13 @@ const App: React.FC = () => {
     useEffect(() => {
         localStorage.setItem('allOrderHistories', JSON.stringify(allOrderHistories));
     }, [allOrderHistories]);
+     useEffect(() => {
+        if (verificationInfo) {
+            localStorage.setItem('verificationInfo', JSON.stringify(verificationInfo));
+        } else {
+            localStorage.removeItem('verificationInfo');
+        }
+    }, [verificationInfo]);
 
 
     useEffect(() => {
