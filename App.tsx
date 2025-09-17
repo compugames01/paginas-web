@@ -47,8 +47,21 @@ const App: React.FC = () => {
     });
     const [passwordResetInfo, setPasswordResetInfo] = useState<{ email: string; token: string } | null>(null);
     const [verificationInfo, setVerificationInfo] = useState<{ email: string; token: string } | null>(() => {
-        const saved = localStorage.getItem('verificationInfo');
-        return saved ? JSON.parse(saved) : null;
+        try {
+            const saved = localStorage.getItem('verificationInfo');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Basic validation to ensure it's the right shape
+                if (parsed && typeof parsed.email === 'string' && typeof parsed.token === 'string') {
+                    return parsed;
+                }
+            }
+        } catch (error) {
+            console.error("Failed to parse verification info from localStorage", error);
+        }
+        // If anything fails, ensure localStorage is clean
+        localStorage.removeItem('verificationInfo');
+        return null;
     });
     const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -62,6 +75,7 @@ const App: React.FC = () => {
         return 'light';
     });
     const [isLoading, setIsLoading] = useState(true);
+    const [loginError, setLoginError] = useState<{ message: string; isUnverified: boolean } | null>(null);
 
     // --- Search State ---
     const [searchQuery, setSearchQuery] = useState('');
@@ -154,14 +168,17 @@ const App: React.FC = () => {
     };
 
 
-    const handleLogin = useCallback(async (email: string, password: string): Promise<{ success: boolean; message: string; }> => {
+    const handleLogin = useCallback(async (email: string, password: string): Promise<void> => {
+        setLoginError(null);
         const result = await api.login(email, password);
         if (result.success && result.user) {
             setCurrentUser(result.user);
             setCurrentPage('home');
             addToast(`¡Bienvenido de nuevo, ${result.user.name.split(' ')[0]}!`, 'success');
+        } else {
+            const isUnverified = result.message.includes('verifica tu correo');
+            setLoginError({ message: result.message, isUnverified });
         }
-        return { success: result.success, message: result.message };
     }, [addToast]);
 
     const handleRegister = useCallback(async (name: string, email: string, password: string, phone: string): Promise<boolean> => {
@@ -436,12 +453,24 @@ const App: React.FC = () => {
                     onBackToCart={() => setCurrentPage('cart')}
                 />;
             case 'login':
-                return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setCurrentPage('register')} onNavigateToForgotPassword={() => setCurrentPage('forgotPassword')} onResendVerificationRequest={handleResendVerification} />;
+                return <LoginPage 
+                    onLogin={handleLogin} 
+                    loginError={loginError}
+                    onNavigateToRegister={() => {
+                        setLoginError(null);
+                        setCurrentPage('register');
+                    }} 
+                    onNavigateToForgotPassword={() => {
+                        setLoginError(null);
+                        setCurrentPage('forgotPassword');
+                    }}
+                    onResendVerificationRequest={handleResendVerification} 
+                />;
             case 'register':
                 return <RegisterPage onRegister={handleRegister} onNavigateToLogin={() => setCurrentPage('login')} />;
             case 'verification':
                  if (!verificationInfo) {
-                     return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setCurrentPage('register')} onNavigateToForgotPassword={() => setCurrentPage('forgotPassword')} onResendVerificationRequest={handleResendVerification}/>;
+                     return <LoginPage onLogin={handleLogin} loginError={loginError} onNavigateToRegister={() => setCurrentPage('register')} onNavigateToForgotPassword={() => setCurrentPage('forgotPassword')} onResendVerificationRequest={handleResendVerification}/>;
                  }
                  return <VerificationPage 
                      email={verificationInfo.email} 
@@ -465,7 +494,7 @@ const App: React.FC = () => {
                 return <ContactPage />;
             case 'account':
                 if (!currentUser) {
-                    return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setCurrentPage('register')} onNavigateToForgotPassword={() => setCurrentPage('forgotPassword')} onResendVerificationRequest={handleResendVerification} />;
+                    return <LoginPage onLogin={handleLogin} loginError={loginError} onNavigateToRegister={() => setCurrentPage('register')} onNavigateToForgotPassword={() => setCurrentPage('forgotPassword')} onResendVerificationRequest={handleResendVerification} />;
                 }
                 return <AccountPage 
                     user={currentUser}
