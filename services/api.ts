@@ -79,38 +79,81 @@ export const submitReview = (productId: number, author: string, reviewData: { ra
 // User & Auth API
 // =================================
 
-export const login = (email: string, password: string): Promise<User | null> => {
+export const login = (email: string, password: string): Promise<{ success: boolean; message: string; user: User | null }> => {
     console.log(`API: Attempting login for ${email}...`);
     return new Promise(resolve => {
         setTimeout(() => {
             const user = mockUsers.find(u => u.email === email && u.password === password);
             if (user) {
+                if (!user.verified) {
+                    console.log("API: Login failed. Account not verified.");
+                    resolve({ success: false, message: 'Por favor, verifica tu correo electrónico antes de iniciar sesión.', user: null });
+                    return;
+                }
                 console.log("API: Login successful.");
                 const { password, ...userWithoutPassword } = user;
-                resolve(userWithoutPassword);
+                resolve({ success: true, message: 'Inicio de sesión exitoso.', user: userWithoutPassword });
             } else {
-                console.log("API: Login failed.");
-                resolve(null);
+                console.log("API: Login failed. Incorrect credentials.");
+                resolve({ success: false, message: 'Credenciales incorrectas.', user: null });
             }
         }, apiDelay);
     });
 };
 
-export const register = (name: string, email: string, password: string, phone: string): Promise<{ success: boolean, message: string, user: User | null }> => {
+export const register = (name: string, email: string, password: string, phone: string): Promise<{ success: boolean, message: string, user: User | null, verificationToken: string | null }> => {
     console.log(`API: Attempting registration for ${email}...`);
     return new Promise(resolve => {
         setTimeout(() => {
             if (mockUsers.some(u => u.email === email)) {
                 console.log("API: Registration failed, email exists.");
-                resolve({ success: false, message: 'Este correo electrónico ya está registrado.', user: null });
+                resolve({ success: false, message: 'Este correo electrónico ya está registrado.', user: null, verificationToken: null });
                 return;
             }
+            const verificationToken = `VERIFY-${Math.random().toString(36).substring(2, 15)}`;
             const newUser: MockUserWithPassword = { name, email, password, phone: `+51 ${phone}`, addresses: [], paymentMethods: [], verified: false };
             mockUsers.push(newUser);
             saveUsers();
             const { password: pw, ...userWithoutPassword } = newUser;
             console.log("API: Registration successful.");
-            resolve({ success: true, message: 'Registro exitoso.', user: userWithoutPassword });
+            resolve({ success: true, message: 'Registro exitoso.', user: userWithoutPassword, verificationToken });
+        }, apiDelay);
+    });
+};
+
+export const verifyEmail = (token: string, email: string): Promise<{ success: boolean; message: string }> => {
+    console.log(`API: Verifying email ${email} with token ${token}...`);
+    return new Promise(resolve => {
+        setTimeout(() => {
+            const userIndex = mockUsers.findIndex(u => u.email === email);
+            if (userIndex !== -1 && token && token.startsWith('VERIFY-')) {
+                mockUsers[userIndex].verified = true;
+                saveUsers();
+                console.log(`API: Email for ${email} verified successfully.`);
+                resolve({ success: true, message: '¡Correo electrónico verificado con éxito!' });
+            } else {
+                console.log(`API: Email verification failed for ${email}.`);
+                resolve({ success: false, message: 'El enlace de verificación no es válido o ha expirado.' });
+            }
+        }, apiDelay);
+    });
+};
+
+export const resendVerificationEmail = (email: string): Promise<{ success: boolean; message: string }> => {
+    console.log(`API: Resend verification request for ${email}...`);
+    return new Promise(resolve => {
+        setTimeout(() => {
+            const user = mockUsers.find(u => u.email === email);
+            if (user) {
+                if(user.verified) {
+                    resolve({ success: false, message: 'Esta cuenta ya ha sido verificada.' });
+                    return;
+                }
+                sendVerificationEmail(user.email, user.name);
+                resolve({ success: true, message: 'Se ha enviado un nuevo correo de verificación.' });
+            } else {
+                resolve({ success: true, message: 'Si existe una cuenta con este correo, recibirás un nuevo enlace de verificación.' });
+            }
         }, apiDelay);
     });
 };
@@ -118,8 +161,7 @@ export const register = (name: string, email: string, password: string, phone: s
 export const sendVerificationEmail = async (email: string, name: string): Promise<void> => {
     console.log(`Simulating sending verification email to ${email}...`);
     await new Promise(resolve => setTimeout(resolve, 500));
-    // Simulate a verification token
-    const verificationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const verificationToken = `VERIFY-${Math.random().toString(36).substring(2, 15)}`;
     const verificationLink = `https://abarrotes-fresco.app/verify?token=${verificationToken}&email=${email}`;
 
     const emailContent = `
@@ -180,7 +222,6 @@ export const sendPasswordResetEmail = (email: string): Promise<{ success: boolea
                 
                 resolve({ success: true, message: 'Se ha enviado un enlace de restablecimiento.', token });
             } else {
-                // To prevent user enumeration, we send the same message whether the user exists or not.
                 console.log(`API: Password reset request for non-existent email ${email}. Responding with generic success message.`);
                 resolve({ success: true, message: 'Si existe una cuenta con este correo, recibirás un enlace.', token: null });
             }
@@ -192,8 +233,6 @@ export const resetPassword = (email: string, token: string, newPassword: string)
     console.log(`API: Attempting to reset password for ${email} with token ${token}...`);
     return new Promise(resolve => {
         setTimeout(() => {
-            // In a real app, the token would be validated against a database record.
-            // Here, we'll just check if it's a non-empty string starting with RESET- and find the user.
             const userIndex = mockUsers.findIndex(u => u.email === email);
             if (userIndex !== -1 && token && token.startsWith('RESET-')) {
                 mockUsers[userIndex].password = newPassword;

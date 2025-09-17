@@ -15,7 +15,9 @@ import WishlistPage from './components/WishlistPage';
 import ForgotPasswordPage from './components/ForgotPasswordPage';
 import ResetPasswordPage from './components/ResetPasswordPage';
 import ContactPage from './components/ContactPage';
-import { Page, CartItem, Product, User, Order, Review, Address, PaymentMethod } from './types';
+import VerificationPage from './components/VerificationPage';
+import ToastContainer from './components/Toast';
+import { Page, CartItem, Product, User, Order, Review, Address, PaymentMethod, Toast } from './types';
 import * as api from './services/api';
 
 
@@ -44,6 +46,8 @@ const App: React.FC = () => {
         return saved ? JSON.parse(saved) : {};
     });
     const [passwordResetInfo, setPasswordResetInfo] = useState<{ email: string; token: string } | null>(null);
+    const [verificationInfo, setVerificationInfo] = useState<{ email: string; token: string } | null>(null);
+    const [toasts, setToasts] = useState<Toast[]>([]);
 
     const [theme, setTheme] = useState<'light' | 'dark'>(() => {
         if (typeof window !== 'undefined' && localStorage.theme) {
@@ -56,10 +60,28 @@ const App: React.FC = () => {
     });
     const [isLoading, setIsLoading] = useState(true);
 
+    // --- Search State ---
+    const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+
     const orderHistory = useMemo(() => {
         if (!currentUser) return [];
         return allOrderHistories[currentUser.email] || [];
     }, [currentUser, allOrderHistories]);
+
+    // --- Toast Management ---
+    const addToast = useCallback((message: string, type: Toast['type']) => {
+        const id = Date.now();
+        setToasts(prevToasts => [...prevToasts, { id, message, type }]);
+        setTimeout(() => {
+            removeToast(id);
+        }, 5000);
+    }, []);
+
+    const removeToast = useCallback((id: number) => {
+        setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
+    }, []);
+
 
     // --- Persist State to localStorage ---
     useEffect(() => { localStorage.setItem('currentPage', currentPage); }, [currentPage]);
@@ -96,43 +118,62 @@ const App: React.FC = () => {
         };
         loadProducts();
     }, []);
+    
+    // Debounce search query
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery);
+        }, 300);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [searchQuery]);
+
+    const searchResults = useMemo(() => {
+        if (debouncedSearchQuery.trim() === '') {
+            return [];
+        }
+        return products.filter(product =>
+            product.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+        ).slice(0, 5); // Limit to 5 results
+    }, [debouncedSearchQuery, products]);
 
     const toggleTheme = () => {
         setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
     };
 
 
-    const handleLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
-        const user = await api.login(email, password);
-        if (user) {
-            setCurrentUser(user);
+    const handleLogin = useCallback(async (email: string, password: string): Promise<{ success: boolean; message: string; }> => {
+        const result = await api.login(email, password);
+        if (result.success && result.user) {
+            setCurrentUser(result.user);
             setCurrentPage('home');
-            return true;
+            addToast(`¡Bienvenido de nuevo, ${result.user.name.split(' ')[0]}!`, 'success');
         }
-        alert('Credenciales incorrectas.');
-        return false;
-    }, []);
+        return { success: result.success, message: result.message };
+    }, [addToast]);
 
     const handleRegister = useCallback(async (name: string, email: string, password: string, phone: string): Promise<boolean> => {
         const result = await api.register(name, email, password, phone);
-        if (result.success && result.user) {
-            setCurrentUser(result.user);
+        if (result.success && result.user && result.verificationToken) {
             await api.sendVerificationEmail(email, name);
-            setCurrentPage('home');
-            alert('¡Registro exitoso! Se ha enviado un correo de verificación a tu dirección de correo electrónico.');
+            setVerificationInfo({ email: result.user.email, token: result.verificationToken });
+            setCurrentPage('verification');
             return true;
         } else {
-            alert(result.message);
+            addToast(result.message, 'error');
             return false;
         }
-    }, []);
+    }, [addToast]);
 
     const handleLogout = useCallback(() => {
         setCurrentUser(null);
         setCart([]);
         setWishlist([]);
         setCurrentPage('home');
-    }, []);
+        addToast('Has cerrado sesión exitosamente.', 'info');
+    }, [addToast]);
 
     const handleNavigateToResetPassword = useCallback((email: string, token: string) => {
         setPasswordResetInfo({ email, token });
@@ -145,12 +186,25 @@ const App: React.FC = () => {
         }
         const result = await api.resetPassword(passwordResetInfo.email, passwordResetInfo.token, newPassword);
         if (result.success) {
-            alert(result.message);
+            addToast(result.message, 'success');
             setPasswordResetInfo(null);
             setCurrentPage('login');
         }
         return result;
-    }, [passwordResetInfo]);
+    }, [passwordResetInfo, addToast]);
+
+    const handleVerifyAccount = useCallback(async (token: string, email: string): Promise<{ success: boolean; message: string }> => {
+        const result = await api.verifyEmail(token, email);
+        if (result.success) {
+            setVerificationInfo(null);
+        }
+        return result;
+    }, []);
+    
+    const handleResendVerification = useCallback(async (email: string) => {
+        const result = await api.resendVerificationEmail(email);
+        addToast(result.message, 'info');
+    }, [addToast]);
 
     const addToCart = useCallback((product: Product) => {
         setCart(prevCart => {
@@ -162,7 +216,8 @@ const App: React.FC = () => {
             }
             return [...prevCart, { ...product, quantity: 1 }];
         });
-    }, []);
+        addToast(`${product.name} añadido al carrito`, 'success');
+    }, [addToast]);
 
     const updateCartQuantity = useCallback((productId: number, quantity: number) => {
         setCart(prevCart => {
@@ -185,12 +240,15 @@ const App: React.FC = () => {
     
     const handleToggleWishlist = useCallback((productId: number) => {
         setWishlist(prevWishlist => {
-            if (prevWishlist.includes(productId)) {
+            const isInWishlist = prevWishlist.includes(productId);
+            if (isInWishlist) {
+                addToast('Eliminado de la lista de deseos', 'info');
                 return prevWishlist.filter(id => id !== productId);
             }
+            addToast('Añadido a la lista de deseos', 'success');
             return [...prevWishlist, productId];
         });
-    }, []);
+    }, [addToast]);
 
     const handleCheckout = useCallback((
         items: CartItem[], 
@@ -226,66 +284,80 @@ const App: React.FC = () => {
         setSelectedProduct(product);
         setCurrentPage('productDetail');
     }, []);
+    
+    const handleSearchResultSelect = useCallback((product: Product) => {
+        handleViewDetails(product);
+        setSearchQuery('');
+    }, [handleViewDetails]);
 
     const handleSubmitReview = useCallback(async (productId: number, review: { rating: number; comment: string }) => {
         if (!currentUser) {
-            alert("Debes iniciar sesión para dejar una reseña.");
+            addToast("Debes iniciar sesión para dejar una reseña.", 'error');
             return;
         }
         const updatedProduct = await api.submitReview(productId, currentUser.name, review);
         if(updatedProduct) {
              setProducts(prevProducts => prevProducts.map(p => p.id === productId ? updatedProduct : p));
              setSelectedProduct(updatedProduct);
+             addToast('¡Gracias por tu reseña!', 'success');
         }
-    }, [currentUser]);
+    }, [currentUser, addToast]);
 
     const handleUpdateUser = useCallback(async (currentEmail: string, newName: string, newEmail: string, newPhone: string, currentPassword?: string, newPassword?: string): Promise<{ success: boolean; message: string }> => {
         const result = await api.updateUser(currentEmail, newName, newEmail, newPhone, currentPassword, newPassword);
         if (result.success && result.user) {
             setCurrentUser(result.user);
+            addToast(result.message, 'success');
+        } else {
+            addToast(result.message, 'error');
         }
         return { success: result.success, message: result.message };
-    }, []);
+    }, [addToast]);
 
     const handleAddAddress = useCallback(async (addressData: Omit<Address, 'id'>) => {
         if (!currentUser) return;
         const updatedUser = await api.addAddress(currentUser.email, addressData);
         if (updatedUser) {
             setCurrentUser(updatedUser);
+            addToast('Dirección añadida con éxito.', 'success');
         }
-    }, [currentUser]);
+    }, [currentUser, addToast]);
 
     const handleUpdateAddress = useCallback(async (address: Address) => {
         if (!currentUser) return;
         const updatedUser = await api.updateAddress(currentUser.email, address);
         if (updatedUser) {
             setCurrentUser(updatedUser);
+            addToast('Dirección actualizada con éxito.', 'success');
         }
-    }, [currentUser]);
+    }, [currentUser, addToast]);
 
     const handleDeleteAddress = useCallback(async (addressId: number) => {
         if (!currentUser) return;
         const updatedUser = await api.deleteAddress(currentUser.email, addressId);
         if (updatedUser) {
             setCurrentUser(updatedUser);
+            addToast('Dirección eliminada con éxito.', 'success');
         }
-    }, [currentUser]);
+    }, [currentUser, addToast]);
 
     const handleAddPaymentMethod = useCallback(async (paymentData: Omit<PaymentMethod, 'id'>) => {
          if (!currentUser) return;
          const updatedUser = await api.addPaymentMethod(currentUser.email, paymentData);
          if (updatedUser) {
              setCurrentUser(updatedUser);
+             addToast('Método de pago añadido con éxito.', 'success');
          }
-    }, [currentUser]);
+    }, [currentUser, addToast]);
 
     const handleDeletePaymentMethod = useCallback(async (paymentMethodId: number) => {
         if (!currentUser) return;
         const updatedUser = await api.deletePaymentMethod(currentUser.email, paymentMethodId);
         if (updatedUser) {
              setCurrentUser(updatedUser);
+             addToast('Método de pago eliminado con éxito.', 'success');
         }
-    }, [currentUser]);
+    }, [currentUser, addToast]);
 
     const handleDeleteAccount = useCallback(async (email: string) => {
         const result = await api.deleteAccount(email);
@@ -296,21 +368,21 @@ const App: React.FC = () => {
                 return newHistories;
             });
             handleLogout();
-            alert('Tu cuenta y todos tus datos asociados han sido eliminados exitosamente.');
+            addToast('Tu cuenta y todos tus datos asociados han sido eliminados exitosamente.', 'success');
             return true;
         }
-        alert('No se pudo encontrar la cuenta para eliminar.');
+        addToast('No se pudo encontrar la cuenta para eliminar.', 'error');
         return false;
-    }, [handleLogout, setAllOrderHistories]);
+    }, [handleLogout, setAllOrderHistories, addToast]);
 
     const handleEmailOrder = useCallback(async (order: Order) => {
         if (!currentUser) {
-            alert("Debes iniciar sesión para realizar esta acción.");
+            addToast("Debes iniciar sesión para realizar esta acción.", 'error');
             return;
         }
         await api.sendOrderEmail(currentUser.email, order);
-        alert(`Se ha enviado un recibo del pedido #${order.id} a tu correo electrónico.`);
-    }, [currentUser]);
+        addToast(`Se ha enviado un recibo del pedido #${order.id} a tu correo electrónico.`, 'info');
+    }, [currentUser, addToast]);
 
     const cartItemCount = useMemo(() => {
         return cart.reduce((total, item) => total + item.quantity, 0);
@@ -338,6 +410,7 @@ const App: React.FC = () => {
                         if (currentUser) {
                             setCurrentPage('checkout');
                         } else {
+                            addToast('Debes iniciar sesión para proceder al pago.', 'info');
                             setCurrentPage('login');
                         }
                     }}
@@ -352,9 +425,20 @@ const App: React.FC = () => {
                     onBackToCart={() => setCurrentPage('cart')}
                 />;
             case 'login':
-                return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setCurrentPage('register')} onNavigateToForgotPassword={() => setCurrentPage('forgotPassword')} />;
+                return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setCurrentPage('register')} onNavigateToForgotPassword={() => setCurrentPage('forgotPassword')} onResendVerificationRequest={handleResendVerification} />;
             case 'register':
                 return <RegisterPage onRegister={handleRegister} onNavigateToLogin={() => setCurrentPage('login')} />;
+            case 'verification':
+                 if (!verificationInfo) {
+                     return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setCurrentPage('register')} onNavigateToForgotPassword={() => setCurrentPage('forgotPassword')} onResendVerificationRequest={handleResendVerification}/>;
+                 }
+                 return <VerificationPage 
+                     email={verificationInfo.email} 
+                     token={verificationInfo.token}
+                     onVerify={handleVerifyAccount}
+                     onNavigateToLogin={() => setCurrentPage('login')}
+                     onResendVerification={handleResendVerification}
+                 />;
             case 'forgotPassword':
                 return <ForgotPasswordPage onNavigateToLogin={() => setCurrentPage('login')} onNavigateToResetPassword={handleNavigateToResetPassword} />;
              case 'resetPassword':
@@ -370,7 +454,7 @@ const App: React.FC = () => {
                 return <ContactPage />;
             case 'account':
                 if (!currentUser) {
-                    return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setCurrentPage('register')} onNavigateToForgotPassword={() => setCurrentPage('forgotPassword')} />;
+                    return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setCurrentPage('register')} onNavigateToForgotPassword={() => setCurrentPage('forgotPassword')} onResendVerificationRequest={handleResendVerification} />;
                 }
                 return <AccountPage 
                     user={currentUser}
@@ -384,6 +468,7 @@ const App: React.FC = () => {
                     onDeleteAccount={handleDeleteAccount}
                     onLogout={handleLogout}
                     onEmailOrder={handleEmailOrder}
+                    addToast={addToast}
                 />;
             default:
                 return <HomePage products={products} onAddToCart={addToCart} onViewDetails={handleViewDetails} />;
@@ -392,7 +477,20 @@ const App: React.FC = () => {
 
     return (
         <div className="flex flex-col min-h-screen font-sans">
-            <Header setCurrentPage={setCurrentPage} cartItemCount={cartItemCount} wishlistItemCount={wishlist.length} currentUser={currentUser} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
+            <ToastContainer toasts={toasts} removeToast={removeToast} />
+            <Header 
+                setCurrentPage={setCurrentPage} 
+                cartItemCount={cartItemCount} 
+                wishlistItemCount={wishlist.length} 
+                currentUser={currentUser} 
+                onLogout={handleLogout} 
+                theme={theme} 
+                toggleTheme={toggleTheme}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                searchResults={searchResults}
+                onSearchResultSelect={handleSearchResultSelect}
+            />
             <main className="flex-grow container mx-auto px-2 sm:px-4 py-8">
                 {renderPage()}
             </main>

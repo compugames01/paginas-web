@@ -2,9 +2,10 @@
 import React, { useState } from 'react';
 
 interface LoginPageProps {
-    onLogin: (email: string, password: string) => Promise<boolean>;
+    onLogin: (email: string, password: string) => Promise<{ success: boolean; message: string; }>;
     onNavigateToRegister: () => void;
     onNavigateToForgotPassword: () => void;
+    onResendVerificationRequest: (email: string) => void;
 }
 
 const validateEmail = (email: string): boolean => {
@@ -33,12 +34,14 @@ const EyeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5
 const EyeOffIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 1.274-4.057 5.064 7 9.542-7 .847 0 1.673.124 2.468.352M7.5 7.5l12 12" /></svg>;
 
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister, onNavigateToForgotPassword }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister, onNavigateToForgotPassword, onResendVerificationRequest }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [emailError, setEmailError] = useState('');
     const [passwordError, setPasswordError] = useState('');
+    const [apiError, setApiError] = useState('');
+    const [isUnverified, setIsUnverified] = useState(false);
     const [touched, setTouched] = useState({
         email: false,
         password: false,
@@ -81,13 +84,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister, on
     };
 
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Mark all fields as touched to show errors if not already
+        setApiError('');
+        setIsUnverified(false);
         setTouched({ email: true, password: true });
 
-        // Run validation for all fields
         const isEmailValid = validateEmail(email);
         const passwordValidationError = validatePassword(password);
         
@@ -99,7 +102,23 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister, on
         setPasswordError(passwordValidationError);
         
         if (isEmailValid && !passwordValidationError) {
-            onLogin(email, password);
+            const result = await onLogin(email, password);
+            if (!result.success) {
+                setApiError(result.message);
+                if (result.message.includes('verifica tu correo')) {
+                    setIsUnverified(true);
+                }
+            }
+        }
+    };
+    
+    const handleResendClick = () => {
+        if (validateEmail(email)) {
+            onResendVerificationRequest(email);
+            setApiError('Se ha enviado un nuevo correo de verificación.');
+            setIsUnverified(false);
+        } else {
+            setApiError('Por favor, introduce un correo electrónico válido para reenviar el enlace.');
         }
     };
 
@@ -156,9 +175,21 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister, on
                     <div className="space-y-1">
                         {touched.email && emailError && <p className="text-sm text-red-600 dark:text-red-400">{emailError}</p>}
                         {touched.password && passwordError && <p className="text-sm text-red-600 dark:text-red-400">{passwordError}</p>}
+                        {apiError && <p className="text-sm text-red-600 dark:text-red-400">{apiError}</p>}
                     </div>
                     
-                     <div className="flex items-center justify-end text-sm">
+                     <div className="flex items-center justify-between text-sm">
+                        {isUnverified ? (
+                             <button
+                                type="button"
+                                onClick={handleResendClick}
+                                className="font-medium text-black dark:text-gray-200 hover:underline focus:outline-none"
+                            >
+                                Reenviar correo de verificación
+                            </button>
+                        ) : (
+                            <span />
+                        )}
                         <button 
                             type="button" 
                             onClick={onNavigateToForgotPassword} 

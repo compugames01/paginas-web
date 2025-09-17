@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import type { User, Order, Address, PaymentMethod } from '../types';
+import type { User, Order, Address, PaymentMethod, Toast } from '../types';
 
 interface AccountPageProps {
     user: User;
@@ -21,6 +21,7 @@ interface AccountPageProps {
     onDeleteAccount: (email: string) => Promise<boolean>;
     onLogout: () => void;
     onEmailOrder: (order: Order) => void;
+    addToast: (message: string, type: Toast['type']) => void;
 }
 
 const ProfileIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>);
@@ -59,7 +60,7 @@ const AccordionItem: React.FC<{ question: string; answer: string; }> = ({ questi
 };
 
 
-const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateUser, onAddAddress, onUpdateAddress, onDeleteAddress, onAddPaymentMethod, onDeletePaymentMethod, onDeleteAccount, onLogout, onEmailOrder }) => {
+const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateUser, onAddAddress, onUpdateAddress, onDeleteAddress, onAddPaymentMethod, onDeletePaymentMethod, onDeleteAccount, onLogout, onEmailOrder, addToast }) => {
     const [activeTab, setActiveTab] = useState<'profile' | 'history' | 'addresses' | 'payment' | 'support'>('profile');
     const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
     
@@ -127,7 +128,6 @@ const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateU
         const result = await onUpdateUser(user.email, editedName, editedEmail, editedPhone, currentPassword, newPassword);
         if (result.success) {
             setIsEditingProfile(false);
-            alert(result.message);
         } else {
             setProfileError(result.message);
         }
@@ -199,7 +199,7 @@ const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateU
 
     const handleSupportSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        alert(`Mensaje enviado:\nAsunto: ${supportSubject}\nMensaje: ${supportMessage}\n\nGracias por contactarnos. Te responderemos pronto.`);
+        addToast('Mensaje de soporte enviado con éxito.', 'success');
         setSupportSubject('');
         setSupportMessage('');
     };

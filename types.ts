@@ -1,5 +1,5 @@
 
-export type Page = 'home' | 'catalog' | 'cart' | 'login' | 'register' | 'confirmation' | 'productDetail' | 'wishlist' | 'checkout' | 'account' | 'forgotPassword' | 'resetPassword' | 'contact';
+export type Page = 'home' | 'catalog' | 'cart' | 'login' | 'register' | 'confirmation' | 'productDetail' | 'wishlist' | 'checkout' | 'account' | 'forgotPassword' | 'resetPassword' | 'contact' | 'verification';
 
 export interface Address {
     id: number;
@@ -58,4 +58,10 @@ export interface Order {
     status: 'Procesando' | 'Enviado' | 'Entregado' | 'Cancelado';
     shippingAddress: Address;
     paymentMethod: PaymentMethod;
+}
+
+export interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error' | 'info';
 }

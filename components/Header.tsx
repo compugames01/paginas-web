@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import type { Page, User } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import type { Page, User, Product } from '../types';
 
 interface HeaderProps {
     setCurrentPage: (page: Page) => void;
@@ -10,6 +10,10 @@ interface HeaderProps {
     onLogout: () => void;
     theme: 'light' | 'dark';
     toggleTheme: () => void;
+    searchQuery: string;
+    setSearchQuery: (query: string) => void;
+    searchResults: Product[];
+    onSearchResultSelect: (product: Product) => void;
 }
 
 const CartIcon = () => (
@@ -46,6 +50,8 @@ const CloseIcon = () => (
     </svg>
 );
 
+const SearchIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>);
+
 
 const NavLink: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({ onClick, children }) => (
     <button onClick={onClick} className="text-gray-100 hover:text-white hover:bg-primary-dark px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">
@@ -53,8 +59,10 @@ const NavLink: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({
     </button>
 );
 
-const Header: React.FC<HeaderProps> = ({ setCurrentPage, cartItemCount, wishlistItemCount, currentUser, onLogout, theme, toggleTheme }) => {
+const Header: React.FC<HeaderProps> = ({ setCurrentPage, cartItemCount, wishlistItemCount, currentUser, onLogout, theme, toggleTheme, searchQuery, setSearchQuery, searchResults, onSearchResultSelect }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isSearchActive, setIsSearchActive] = useState(false);
+    const searchRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (isMobileMenuOpen) {
@@ -66,6 +74,19 @@ const Header: React.FC<HeaderProps> = ({ setCurrentPage, cartItemCount, wishlist
             document.body.style.overflow = 'unset';
         };
     }, [isMobileMenuOpen]);
+
+    // Handle clicks outside of search to close results
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+                setIsSearchActive(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
     const handleMobileLinkClick = (page: Page) => {
         setCurrentPage(page);
@@ -84,7 +105,7 @@ const Header: React.FC<HeaderProps> = ({ setCurrentPage, cartItemCount, wishlist
                     <div className="flex items-center">
                         <button onClick={() => setCurrentPage('home')} className="flex-shrink-0 flex items-center gap-2 text-white">
                             <LogoIcon />
-                            <span className="font-bold text-xl">Abarrotes Fresco</span>
+                            <span className="font-bold text-xl hidden sm:inline">Abarrotes Fresco</span>
                         </button>
                          <div className="hidden md:block">
                             <div className="ml-10 flex items-baseline space-x-4">
@@ -94,12 +115,62 @@ const Header: React.FC<HeaderProps> = ({ setCurrentPage, cartItemCount, wishlist
                             </div>
                         </div>
                     </div>
+
+                    <div className="flex-1 flex justify-center px-2 lg:ml-6 lg:justify-end">
+                        <div className="max-w-lg w-full lg:max-w-xs relative" ref={searchRef}>
+                            <label htmlFor="search" className="sr-only">Buscar</label>
+                            <div className="relative text-gray-400 focus-within:text-gray-600">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center">
+                                    <SearchIcon />
+                                </div>
+                                <input
+                                    id="search"
+                                    className="block w-full bg-white dark:bg-gray-800 py-2 pl-10 pr-3 border border-transparent rounded-md leading-5 text-gray-900 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:bg-white dark:focus:bg-gray-700 focus:border-white focus:ring-white focus:text-gray-900 sm:text-sm"
+                                    placeholder="Buscar productos..."
+                                    type="search"
+                                    name="search"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onFocus={() => setIsSearchActive(true)}
+                                />
+                            </div>
+                             {isSearchActive && searchQuery && (
+                                <div className="absolute mt-2 w-full rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-50">
+                                    <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                                        {searchResults.length > 0 ? (
+                                            searchResults.map(product => (
+                                                <button
+                                                    key={product.id}
+                                                    onClick={() => {
+                                                        onSearchResultSelect(product);
+                                                        setIsSearchActive(false);
+                                                    }}
+                                                    className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                    role="menuitem"
+                                                >
+                                                    <img src={product.image} alt={product.name} className="h-10 w-10 object-cover rounded-md mr-3" />
+                                                    <div className="flex-1">
+                                                        <p className="font-medium truncate">{product.name}</p>
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400">${product.price.toFixed(2)}</p>
+                                                    </div>
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="px-4 py-3 text-sm text-center text-gray-500 dark:text-gray-400">
+                                                No se encontraron productos.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                     
                     <div className="flex items-center">
-                         <div className="hidden md:flex items-center space-x-4">
+                         <div className="hidden md:flex items-center space-x-4 ml-4">
                              {currentUser ? (
                                  <>
-                                     <span className="text-white text-sm font-medium px-3 py-2">Hola, {currentUser.name.split(' ')[0]}</span>
+                                     <span className="text-white text-sm font-medium px-3 py-2 whitespace-nowrap">Hola, {currentUser.name.split(' ')[0]}</span>
                                      <NavLink onClick={() => setCurrentPage('account')}>Mi Cuenta</NavLink>
                                      <NavLink onClick={onLogout}>Cerrar Sesión</NavLink>
                                  </>
