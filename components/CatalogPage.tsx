@@ -1,6 +1,6 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import ProductCard from './ProductCard';
+import StarRating from './StarRating';
 import type { Product } from '../types';
 
 interface CatalogPageProps {
@@ -11,17 +11,58 @@ interface CatalogPageProps {
 
 const CATEGORIES = ['Todas', 'Frutas y Verduras', 'Lácteos y Huevos', 'Carnes y Pescados', 'Panadería', 'Despensa'];
 
+const StarIcon = ({ filled = true }) => (
+    <svg className={`w-5 h-5 ${filled ? 'text-yellow-400' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+);
+
+
 const CatalogPage: React.FC<CatalogPageProps> = ({ products, onAddToCart, onViewDetails }) => {
     const [selectedCategory, setSelectedCategory] = useState('Todas');
     const [searchTerm, setSearchTerm] = useState('');
+    const [sortOrder, setSortOrder] = useState('default');
+    
+    const [maxPrice, setMaxPrice] = useState(1);
+    const [priceValue, setPriceValue] = useState(1);
+    const [minRating, setMinRating] = useState(0);
 
-    const filteredProducts = useMemo(() => {
-        return products.filter(product => {
+    useEffect(() => {
+        if (products.length > 0) {
+            const max = Math.ceil(Math.max(...products.map(p => p.price)));
+            setMaxPrice(max);
+            setPriceValue(max);
+        }
+    }, [products]);
+
+    const filteredAndSortedProducts = useMemo(() => {
+        let filtered = products.filter(product => {
             const matchesCategory = selectedCategory === 'Todas' || product.category === selectedCategory;
             const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-            return matchesCategory && matchesSearch;
+            const matchesPrice = product.price <= priceValue;
+            const matchesRating = product.rating >= minRating;
+            return matchesCategory && matchesSearch && matchesPrice && matchesRating;
         });
-    }, [products, selectedCategory, searchTerm]);
+
+        switch (sortOrder) {
+            case 'price-asc':
+                return [...filtered].sort((a, b) => a.price - b.price);
+            case 'price-desc':
+                return [...filtered].sort((a, b) => b.price - a.price);
+            case 'rating-desc':
+                return [...filtered].sort((a, b) => b.rating - a.rating);
+            case 'name-asc':
+                return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+            case 'name-desc':
+                return [...filtered].sort((a, b) => b.name.localeCompare(a.name));
+            default:
+                return filtered;
+        }
+    }, [products, selectedCategory, searchTerm, priceValue, minRating, sortOrder]);
+    
+    const resetFilters = () => {
+        setSelectedCategory('Todas');
+        setMinRating(0);
+        setPriceValue(maxPrice);
+    };
 
     return (
         <div>
@@ -41,8 +82,8 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ products, onAddToCart, onView
 
             <div className="flex flex-col md:flex-row gap-8">
                 <aside className="md:w-1/4">
-                    <div className="sticky top-24">
-                        <h3 className="text-xl font-bold mb-4 text-text-primary dark:text-gray-300">Categorías</h3>
+                    <div className="sticky top-24 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                        <h3 className="text-xl font-bold mb-4 text-text-primary dark:text-gray-100">Categorías</h3>
                         <div className="flex flex-col items-start space-y-2">
                             {CATEGORIES.map(category => (
                                 <button
@@ -54,20 +95,63 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ products, onAddToCart, onView
                                 </button>
                             ))}
                         </div>
+                        <div className="border-t dark:border-gray-700 my-6"></div>
+                        <h3 className="text-xl font-bold mb-4 text-text-primary dark:text-gray-100">Filtros</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label htmlFor="price" className="block text-sm font-medium text-text-secondary dark:text-gray-300">Precio máximo: <span className="font-bold text-text-primary dark:text-white">${priceValue.toFixed(2)}</span></label>
+                                <input id="price" type="range" min={0} max={maxPrice} value={priceValue} onChange={(e) => setPriceValue(Number(e.target.value))} className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-primary" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-2">Valoración mínima</label>
+                                <div className="flex justify-between">
+                                    {[4, 3, 2, 1].map(rating => (
+                                        <button key={rating} onClick={() => setMinRating(rating)} className={`p-2 rounded-full transition-colors ${minRating === rating ? 'bg-primary-light dark:bg-primary/20' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
+                                            <div className="flex items-center">
+                                                <span className="mr-1 text-sm font-semibold dark:text-gray-200">{rating}</span>
+                                                <StarIcon />
+                                                <span className="ml-1 text-sm dark:text-gray-300">&amp; +</span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <button onClick={resetFilters} className="w-full text-center px-4 py-2 mt-4 rounded-lg transition-colors bg-gray-200 dark:bg-gray-700 text-text-secondary dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 font-semibold">
+                                Limpiar Filtros
+                            </button>
+                        </div>
                     </div>
                 </aside>
 
                 <main className="md:w-3/4">
-                    {filteredProducts.length > 0 ? (
+                    <div className="flex flex-col sm:flex-row justify-between items-center mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+                        <p className="text-text-secondary dark:text-gray-300 mb-2 sm:mb-0">
+                            Mostrando <span className="font-bold text-text-primary dark:text-white">{filteredAndSortedProducts.length}</span> de <span className="font-bold text-text-primary dark:text-white">{products.length}</span> productos
+                        </p>
+                        <select
+                            value={sortOrder}
+                            onChange={(e) => setSortOrder(e.target.value)}
+                            className="p-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        >
+                            <option value="default">Por defecto</option>
+                            <option value="price-asc">Precio: Menor a Mayor</option>
+                            <option value="price-desc">Precio: Mayor a Menor</option>
+                            <option value="rating-desc">Mejor Valorados</option>
+                            <option value="name-asc">Nombre: A-Z</option>
+                            <option value="name-desc">Nombre: Z-A</option>
+                        </select>
+                    </div>
+
+                    {filteredAndSortedProducts.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {filteredProducts.map(product => (
+                            {filteredAndSortedProducts.map(product => (
                                 <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} onViewDetails={onViewDetails} />
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-16">
+                        <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-lg shadow-md">
                             <h3 className="text-2xl font-semibold text-text-primary dark:text-gray-300">No se encontraron productos</h3>
-                            <p className="text-text-secondary dark:text-gray-400 mt-2">Intenta ajustar tu búsqueda o selección de categoría.</p>
+                            <p className="text-text-secondary dark:text-gray-400 mt-2">Intenta ajustar tu búsqueda o filtros.</p>
                         </div>
                     )}
                 </main>
