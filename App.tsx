@@ -157,7 +157,7 @@ const App: React.FC = () => {
     const handleRegister = useCallback(async (name: string, email: string, password: string, phone: string): Promise<boolean> => {
         const result = await api.register(name, email, password, phone);
         if (result.success && result.user && result.verificationToken) {
-            await api.sendVerificationEmail(email, name);
+            await api.sendVerificationEmail(email, name, result.verificationToken);
             setVerificationInfo({ email: result.user.email, token: result.verificationToken });
             setCurrentPage('verification');
             return true;

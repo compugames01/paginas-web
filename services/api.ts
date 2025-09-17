@@ -111,7 +111,7 @@ export const register = (name: string, email: string, password: string, phone: s
                 return;
             }
             const verificationToken = `VERIFY-${Math.random().toString(36).substring(2, 15)}`;
-            const newUser: MockUserWithPassword = { name, email, password, phone: `+51 ${phone}`, addresses: [], paymentMethods: [], verified: false };
+            const newUser: MockUserWithPassword = { name, email, password, phone: `+51 ${phone}`, addresses: [], paymentMethods: [], verified: false, verificationToken };
             mockUsers.push(newUser);
             saveUsers();
             const { password: pw, ...userWithoutPassword } = newUser;
@@ -126,14 +126,22 @@ export const verifyEmail = (token: string, email: string): Promise<{ success: bo
     return new Promise(resolve => {
         setTimeout(() => {
             const userIndex = mockUsers.findIndex(u => u.email === email);
-            if (userIndex !== -1 && token && token.startsWith('VERIFY-')) {
-                mockUsers[userIndex].verified = true;
-                saveUsers();
-                console.log(`API: Email for ${email} verified successfully.`);
-                resolve({ success: true, message: '¡Correo electrónico verificado con éxito!' });
+            if (userIndex !== -1) {
+                const user = mockUsers[userIndex];
+                if (user.verificationToken === token) {
+                    user.verified = true;
+                    delete user.verificationToken; // One-time use token
+                    mockUsers[userIndex] = user;
+                    saveUsers();
+                    console.log(`API: Email for ${email} verified successfully.`);
+                    resolve({ success: true, message: '¡Correo electrónico verificado con éxito!' });
+                } else {
+                    console.log(`API: Email verification failed for ${email}. Invalid token.`);
+                    resolve({ success: false, message: 'El enlace de verificación no es válido o ha expirado.' });
+                }
             } else {
-                console.log(`API: Email verification failed for ${email}.`);
-                resolve({ success: false, message: 'El enlace de verificación no es válido o ha expirado.' });
+                console.log(`API: Email verification failed for ${email}. User not found.`);
+                resolve({ success: false, message: 'No se encontró un usuario con ese correo electrónico.' });
             }
         }, apiDelay);
     });
@@ -149,7 +157,10 @@ export const resendVerificationEmail = (email: string): Promise<{ success: boole
                     resolve({ success: false, message: 'Esta cuenta ya ha sido verificada.' });
                     return;
                 }
-                sendVerificationEmail(user.email, user.name);
+                const newToken = `VERIFY-${Math.random().toString(36).substring(2, 15)}`;
+                user.verificationToken = newToken;
+                saveUsers();
+                sendVerificationEmail(user.email, user.name, newToken);
                 resolve({ success: true, message: 'Se ha enviado un nuevo correo de verificación.' });
             } else {
                 resolve({ success: true, message: 'Si existe una cuenta con este correo, recibirás un nuevo enlace de verificación.' });
@@ -158,11 +169,10 @@ export const resendVerificationEmail = (email: string): Promise<{ success: boole
     });
 };
 
-export const sendVerificationEmail = async (email: string, name: string): Promise<void> => {
+export const sendVerificationEmail = async (email: string, name: string, token: string): Promise<void> => {
     console.log(`Simulating sending verification email to ${email}...`);
     await new Promise(resolve => setTimeout(resolve, 500));
-    const verificationToken = `VERIFY-${Math.random().toString(36).substring(2, 15)}`;
-    const verificationLink = `https://abarrotes-fresco.app/verify?token=${verificationToken}&email=${email}`;
+    const verificationLink = `https://abarrotes-fresco.app/verify?token=${token}&email=${email}`;
 
     const emailContent = `
     -----------------------------------------

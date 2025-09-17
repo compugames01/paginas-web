@@ -24,6 +24,7 @@ export interface User {
     addresses?: Address[];
     paymentMethods?: PaymentMethod[];
     verified: boolean;
+    verificationToken?: string;
 }
 
 export interface Review {
