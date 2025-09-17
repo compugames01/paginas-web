@@ -158,6 +158,7 @@ const App: React.FC = () => {
         const result = await api.register(name, email, password, phone);
         if (result.success && result.user && result.verificationToken) {
             await api.sendVerificationEmail(email, name, result.verificationToken);
+            addToast(`Se ha enviado un correo de verificación a ${email}.`, 'info');
             setVerificationInfo({ email: result.user.email, token: result.verificationToken });
             setCurrentPage('verification');
             return true;
