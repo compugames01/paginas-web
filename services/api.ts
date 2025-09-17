@@ -1,6 +1,6 @@
 
 import { MOCK_PRODUCTS, mockUsers as initialUsers } from '../constants';
-import { Product, User, Review, Address, PaymentMethod } from '../types';
+import { Product, User, Review, Address, PaymentMethod, Order } from '../types';
 
 type MockUserWithPassword = User & { password: string };
 
@@ -137,6 +137,52 @@ export const sendWelcomeEmail = async (email: string, name: string): Promise<voi
     console.log("Email content:");
     console.log(emailContent.trim());
     console.log(`Welcome email successfully "sent" to ${name} <${email}>.`);
+};
+
+export const sendOrderEmail = (email: string, order: Order): Promise<void> => {
+    console.log(`Simulating sending order receipt email to ${email}...`);
+    return new Promise(resolve => {
+        setTimeout(() => {
+            const itemsList = order.items.map(item =>
+                `    - ${item.name} (x${item.quantity}): $${(item.price * item.quantity).toFixed(2)}`
+            ).join('\n');
+
+            const emailContent = `
+-----------------------------------------
+To: ${email}
+From: no-reply@abarrotesfresco.com
+Subject: Recibo de tu pedido #${order.id}
+
+Hola,
+
+Gracias por tu compra. Aquí tienes el resumen de tu pedido:
+
+Número de Pedido: ${order.id}
+Fecha: ${order.date}
+Total: $${order.total.toFixed(2)}
+
+Artículos:
+${itemsList}
+
+Dirección de Envío:
+    ${order.shippingAddress.street}
+    ${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.postalCode}
+    ${order.shippingAddress.country}
+
+Método de Pago:
+    ${order.paymentMethod.cardType.charAt(0).toUpperCase() + order.paymentMethod.cardType.slice(1)} terminada en ${order.paymentMethod.last4}
+
+Si tienes alguna pregunta, no dudes en contactarnos.
+
+El equipo de Abarrotes Fresco
+-----------------------------------------
+            `;
+            console.log("Email content:");
+            console.log(emailContent.trim());
+            console.log(`Order receipt email successfully "sent" for order #${order.id}.`);
+            resolve();
+        }, apiDelay);
+    });
 };
 
 export const updateUser = (

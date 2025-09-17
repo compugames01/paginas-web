@@ -282,6 +282,14 @@ const App: React.FC = () => {
         return false;
     }, [handleLogout, setAllOrderHistories]);
 
+    const handleEmailOrder = useCallback(async (order: Order) => {
+        if (!currentUser) {
+            alert("Debes iniciar sesión para realizar esta acción.");
+            return;
+        }
+        await api.sendOrderEmail(currentUser.email, order);
+        alert(`Se ha enviado un recibo del pedido #${order.id} a tu correo electrónico.`);
+    }, [currentUser]);
 
     const cartItemCount = useMemo(() => {
         return cart.reduce((total, item) => total + item.quantity, 0);
@@ -350,6 +358,7 @@ const App: React.FC = () => {
                     onDeletePaymentMethod={handleDeletePaymentMethod}
                     onDeleteAccount={handleDeleteAccount}
                     onLogout={handleLogout}
+                    onEmailOrder={handleEmailOrder}
                 />;
             default:
                 return <HomePage products={products} onAddToCart={addToCart} onViewDetails={handleViewDetails} />;
