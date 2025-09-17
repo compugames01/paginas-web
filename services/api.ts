@@ -178,33 +178,26 @@ export const resendVerificationEmail = (email: string): Promise<{ success: boole
 };
 
 export const sendVerificationEmail = async (email: string, name: string, token: string): Promise<void> => {
-    console.log(`Simulating sending verification email to ${email}...`);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const verificationLink = `https://abarrotes-fresco.app/verify?token=${token}&email=${email}`;
+    console.log(`API: Requesting verification email send for ${email} via serverless function...`);
+    try {
+        const response = await fetch('/.netlify/functions/send-verification-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, name, token }),
+        });
 
-    const emailContent = `
-    -----------------------------------------
-    To: ${email}
-    From: no-reply@abarrotesfresco.com
-    Subject: Verifica tu cuenta en Abarrotes Fresco
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log(`API: Serverless function response: ${result.message}`);
 
-    Hola ${name},
-
-    ¡Gracias por registrarte en Abarrotes Fresco!
-    Para completar tu registro y asegurar tu cuenta, por favor verifica tu dirección de correo electrónico haciendo clic en el siguiente enlace:
-
-    ${verificationLink}
-
-    Si no te registraste en nuestro sitio, por favor ignora este correo.
-
-    ¡Felices compras!
-
-    El equipo de Abarrotes Fresco
-    -----------------------------------------
-    `;
-    console.log("Email content:");
-    console.log(emailContent.trim());
-    console.log(`Verification email successfully "sent" to ${name} <${email}>.`);
+    } catch (error) {
+        console.error("API: Failed to send verification email via function.", error);
+    }
 };
 
 export const sendPasswordResetEmail = (email: string): Promise<{ success: boolean; message: string; token: string | null }> => {
