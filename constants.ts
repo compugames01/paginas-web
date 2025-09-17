@@ -1,4 +1,5 @@
-import { Product } from './types';
+
+import { Product, User, Address, PaymentMethod } from './types';
 
 export const MOCK_PRODUCTS: Product[] = [
     { 
@@ -166,4 +167,22 @@ export const MOCK_PRODUCTS: Product[] = [
         rating: 4.9,
         reviews: []
     },
+];
+
+// Mock user data for simulation
+export const mockUsers: (User & { password: string; addresses?: Address[]; paymentMethods?: PaymentMethod[] })[] = [
+    { 
+        name: 'Usuario Ejemplo', 
+        email: 'user@example.com', 
+        phone: '+51 987 654 321',
+        password: 'Password123',
+        addresses: [
+            { id: 1, street: 'Calle Falsa 123', city: 'Ciudad Capital', state: 'Provincia Central', postalCode: '12345', country: 'País Ficticio' },
+            { id: 2, street: 'Avenida Siempre Viva 742', city: 'Villa Ejemplo', state: 'Estado Modelo', postalCode: '54321', country: 'País Ficticio' },
+        ],
+        paymentMethods: [
+            { id: 1, cardType: 'visa', last4: '1234', expiryDate: '12/25' },
+            { id: 2, cardType: 'mastercard', last4: '5678', expiryDate: '08/26' }
+        ]
+    }
 ];

@@ -12,7 +12,7 @@ interface AccountPageProps {
         newPhone: string,
         currentPassword?: string,
         newPassword?: string
-    ) => { success: boolean; message: string };
+    ) => Promise<{ success: boolean; message: string }>;
     onAddAddress: (addressData: Omit<Address, 'id'>) => void;
     onUpdateAddress: (address: Address) => void;
     onDeleteAddress: (addressId: number) => void;
@@ -115,14 +115,14 @@ const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateU
         setPasswordVisibility({ current: false, new: false, confirm: false });
     };
 
-    const handleSaveProfile = (e: React.FormEvent) => {
+    const handleSaveProfile = async (e: React.FormEvent) => {
         e.preventDefault();
         setProfileError('');
         if (newPassword !== confirmPassword) {
             setProfileError('Las nuevas contraseñas no coinciden.');
             return;
         }
-        const result = onUpdateUser(user.email, editedName, editedEmail, editedPhone, currentPassword, newPassword);
+        const result = await onUpdateUser(user.email, editedName, editedEmail, editedPhone, currentPassword, newPassword);
         if (result.success) {
             setIsEditingProfile(false);
             alert(result.message);

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 
 interface LoginPageProps {
-    onLogin: (email: string, password: string) => boolean;
+    onLogin: (email: string, password: string) => Promise<boolean>;
     onNavigateToRegister: () => void;
     onNavigateToForgotPassword: () => void;
 }

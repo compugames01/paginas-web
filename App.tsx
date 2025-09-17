@@ -14,59 +14,7 @@ import ProductDetailPage from './components/ProductDetailPage';
 import WishlistPage from './components/WishlistPage';
 import ForgotPasswordPage from './components/ForgotPasswordPage';
 import { Page, CartItem, Product, User, Order, Review, Address, PaymentMethod } from './types';
-import { MOCK_PRODUCTS } from './constants';
-
-// Mock user data for simulation
-const mockUsers: (User & { password: string; addresses?: Address[]; paymentMethods?: PaymentMethod[] })[] = [
-    { 
-        name: 'Usuario Ejemplo', 
-        email: 'user@example.com', 
-        phone: '+51 987 654 321',
-        password: 'Password123',
-        addresses: [
-            { id: 1, street: 'Calle Falsa 123', city: 'Ciudad Capital', state: 'Provincia Central', postalCode: '12345', country: 'País Ficticio' },
-            { id: 2, street: 'Avenida Siempre Viva 742', city: 'Villa Ejemplo', state: 'Estado Modelo', postalCode: '54321', country: 'País Ficticio' },
-        ],
-        paymentMethods: [
-            { id: 1, cardType: 'visa', last4: '1234', expiryDate: '12/25' },
-            { id: 2, cardType: 'mastercard', last4: '5678', expiryDate: '08/26' }
-        ]
-    }
-];
-
-/**
- * Simulates sending a welcome email to a new user.
- * In a real application, this would make an API call to a backend service.
- * @param email The recipient's email address.
- * @param name The recipient's name.
- */
-const sendWelcomeEmail = async (email: string, name: string): Promise<void> => {
-    console.log(`Simulating sending welcome email to ${email}...`);
-    
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500)); 
-    
-    const emailContent = `
-    -----------------------------------------
-    To: ${email}
-    From: no-reply@abarrotesfresco.com
-    Subject: ¡Bienvenido a Abarrotes Fresco!
-
-    Hola ${name},
-
-    ¡Gracias por registrarte en Abarrotes Fresco! Estamos muy contentos de tenerte con nosotros.
-    Explora nuestro catálogo y descubre la frescura y calidad que tenemos para ofrecerte.
-
-    ¡Felices compras!
-
-    El equipo de Abarrotes Fresco
-    -----------------------------------------
-    `;
-
-    console.log("Email content:");
-    console.log(emailContent.trim());
-    console.log(`Welcome email successfully "sent" to ${name} <${email}>.`);
-};
+import * as api from './services/api';
 
 
 const App: React.FC = () => {
@@ -75,7 +23,7 @@ const App: React.FC = () => {
     const [wishlist, setWishlist] = useState<number[]>([]);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
-    const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
+    const [products, setProducts] = useState<Product[]>([]);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [orderHistory, setOrderHistory] = useState<Order[]>([]);
     const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -87,6 +35,7 @@ const App: React.FC = () => {
         }
         return 'light';
     });
+     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const root = window.document.documentElement;
@@ -97,16 +46,26 @@ const App: React.FC = () => {
         }
         localStorage.setItem('theme', theme);
     }, [theme]);
+    
+    useEffect(() => {
+        const loadProducts = async () => {
+            setIsLoading(true);
+            const fetchedProducts = await api.fetchProducts();
+            setProducts(fetchedProducts);
+            setIsLoading(false);
+        };
+        loadProducts();
+    }, []);
 
     const toggleTheme = () => {
         setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
     };
 
 
-    const handleLogin = useCallback((email: string, password: string): boolean => {
-        const user = mockUsers.find(u => u.email === email && u.password === password);
+    const handleLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
+        const user = await api.login(email, password);
         if (user) {
-            setCurrentUser({ name: user.name, email: user.email, phone: user.phone, addresses: user.addresses || [], paymentMethods: user.paymentMethods || [] });
+            setCurrentUser(user);
             setCurrentPage('home');
             return true;
         }
@@ -115,19 +74,17 @@ const App: React.FC = () => {
     }, []);
 
     const handleRegister = useCallback(async (name: string, email: string, password: string, phone: string): Promise<boolean> => {
-        if (mockUsers.some(u => u.email === email)) {
-            alert('Este correo electrónico ya está registrado.');
+        const result = await api.register(name, email, password, phone);
+        if (result.success && result.user) {
+            setCurrentUser(result.user);
+            await api.sendWelcomeEmail(email, name);
+            setCurrentPage('home');
+            alert('¡Registro exitoso! Has iniciado sesión y se ha enviado un correo de bienvenida.');
+            return true;
+        } else {
+            alert(result.message);
             return false;
         }
-        const newUser = { name, email, password, phone: `+51 ${phone}`, addresses: [], paymentMethods: [] };
-        mockUsers.push(newUser);
-        setCurrentUser({ name, email, phone: `+51 ${phone}`, addresses: [], paymentMethods: [] });
-        
-        await sendWelcomeEmail(email, name);
-
-        setCurrentPage('home');
-        alert('¡Registro exitoso! Has iniciado sesión y se ha enviado un correo de bienvenida.');
-        return true;
     }, []);
 
     const handleLogout = useCallback(() => {
@@ -204,121 +161,69 @@ const App: React.FC = () => {
         setCurrentPage('productDetail');
     }, []);
 
-    const handleSubmitReview = useCallback((productId: number, review: { rating: number; comment: string }) => {
+    const handleSubmitReview = useCallback(async (productId: number, review: { rating: number; comment: string }) => {
         if (!currentUser) {
             alert("Debes iniciar sesión para dejar una reseña.");
             return;
         }
-
-        const updatedProducts = products.map(p => {
-            if (p.id === productId) {
-                const newReview: Review = {
-                    id: Date.now(),
-                    author: currentUser.name,
-                    rating: review.rating,
-                    comment: review.comment,
-                };
-                const updatedReviews = [...p.reviews, newReview];
-                const newAverageRating = updatedReviews.reduce((acc, r) => acc + r.rating, 0) / updatedReviews.length;
-                
-                const updatedProduct = {
-                    ...p,
-                    reviews: updatedReviews,
-                    rating: newAverageRating,
-                };
-                setSelectedProduct(updatedProduct);
-                return updatedProduct;
-            }
-            return p;
-        });
-        setProducts(updatedProducts);
-
-    }, [currentUser, products]);
-
-    const handleUpdateUser = useCallback((currentEmail: string, newName: string, newEmail: string, newPhone: string, currentPassword?: string, newPassword?: string): { success: boolean; message: string } => {
-        const userIndex = mockUsers.findIndex(u => u.email === currentEmail);
-        if (userIndex === -1) {
-            return { success: false, message: 'Usuario no encontrado.' };
+        const updatedProduct = await api.submitReview(productId, currentUser.name, review);
+        if(updatedProduct) {
+             setProducts(prevProducts => prevProducts.map(p => p.id === productId ? updatedProduct : p));
+             setSelectedProduct(updatedProduct);
         }
-        const user = mockUsers[userIndex];
-        if (newPassword) {
-            if (!currentPassword || user.password !== currentPassword) {
-                return { success: false, message: 'La contraseña actual es incorrecta.' };
-            }
-            user.password = newPassword;
+    }, [currentUser]);
+
+    const handleUpdateUser = useCallback(async (currentEmail: string, newName: string, newEmail: string, newPhone: string, currentPassword?: string, newPassword?: string): Promise<{ success: boolean; message: string }> => {
+        const result = await api.updateUser(currentEmail, newName, newEmail, newPhone, currentPassword, newPassword);
+        if (result.success && result.user) {
+            setCurrentUser(result.user);
         }
-        if (newEmail !== currentEmail && mockUsers.some(u => u.email === newEmail)) {
-            return { success: false, message: 'El nuevo correo electrónico ya está en uso.' };
-        }
-        user.name = newName;
-        user.email = newEmail;
-        user.phone = newPhone;
-        mockUsers[userIndex] = user;
-        setCurrentUser(prevUser => prevUser ? { ...prevUser, name: newName, email: newEmail, phone: newPhone } : null);
-        return { success: true, message: 'Perfil actualizado con éxito.' };
+        return { success: result.success, message: result.message };
     }, []);
 
-    const handleAddAddress = useCallback((addressData: Omit<Address, 'id'>) => {
+    const handleAddAddress = useCallback(async (addressData: Omit<Address, 'id'>) => {
         if (!currentUser) return;
-        const newAddress: Address = { ...addressData, id: Date.now() };
-        const updatedAddresses = [...(currentUser.addresses || []), newAddress];
-        const updatedUser = { ...currentUser, addresses: updatedAddresses };
-        setCurrentUser(updatedUser);
-        const userIndex = mockUsers.findIndex(u => u.email === currentUser.email);
-        if (userIndex !== -1) {
-            mockUsers[userIndex].addresses = updatedAddresses;
+        const updatedUser = await api.addAddress(currentUser.email, addressData);
+        if (updatedUser) {
+            setCurrentUser(updatedUser);
         }
     }, [currentUser]);
 
-    const handleUpdateAddress = useCallback((address: Address) => {
+    const handleUpdateAddress = useCallback(async (address: Address) => {
         if (!currentUser) return;
-        const updatedAddresses = (currentUser.addresses || []).map(a => a.id === address.id ? address : a);
-        const updatedUser = { ...currentUser, addresses: updatedAddresses };
-        setCurrentUser(updatedUser);
-        const userIndex = mockUsers.findIndex(u => u.email === currentUser.email);
-        if (userIndex !== -1) {
-            mockUsers[userIndex].addresses = updatedAddresses;
+        const updatedUser = await api.updateAddress(currentUser.email, address);
+        if (updatedUser) {
+            setCurrentUser(updatedUser);
         }
     }, [currentUser]);
 
-    const handleDeleteAddress = useCallback((addressId: number) => {
+    const handleDeleteAddress = useCallback(async (addressId: number) => {
         if (!currentUser) return;
-        const updatedAddresses = (currentUser.addresses || []).filter(a => a.id !== addressId);
-        const updatedUser = { ...currentUser, addresses: updatedAddresses };
-        setCurrentUser(updatedUser);
-        const userIndex = mockUsers.findIndex(u => u.email === currentUser.email);
-        if (userIndex !== -1) {
-            mockUsers[userIndex].addresses = updatedAddresses;
+        const updatedUser = await api.deleteAddress(currentUser.email, addressId);
+        if (updatedUser) {
+            setCurrentUser(updatedUser);
         }
     }, [currentUser]);
 
-    const handleAddPaymentMethod = useCallback((paymentData: Omit<PaymentMethod, 'id'>) => {
+    const handleAddPaymentMethod = useCallback(async (paymentData: Omit<PaymentMethod, 'id'>) => {
          if (!currentUser) return;
-         const newPaymentMethod: PaymentMethod = { ...paymentData, id: Date.now() };
-         const updatedPaymentMethods = [...(currentUser.paymentMethods || []), newPaymentMethod];
-         const updatedUser = { ...currentUser, paymentMethods: updatedPaymentMethods };
-         setCurrentUser(updatedUser);
-         const userIndex = mockUsers.findIndex(u => u.email === currentUser.email);
-         if (userIndex !== -1) {
-            mockUsers[userIndex].paymentMethods = updatedPaymentMethods;
+         const updatedUser = await api.addPaymentMethod(currentUser.email, paymentData);
+         if (updatedUser) {
+             setCurrentUser(updatedUser);
          }
     }, [currentUser]);
 
-    const handleDeletePaymentMethod = useCallback((paymentMethodId: number) => {
+    const handleDeletePaymentMethod = useCallback(async (paymentMethodId: number) => {
         if (!currentUser) return;
-        const updatedPaymentMethods = (currentUser.paymentMethods || []).filter(p => p.id !== paymentMethodId);
-        const updatedUser = { ...currentUser, paymentMethods: updatedPaymentMethods };
-        setCurrentUser(updatedUser);
-        const userIndex = mockUsers.findIndex(u => u.email === currentUser.email);
-        if (userIndex !== -1) {
-            mockUsers[userIndex].paymentMethods = updatedPaymentMethods;
+        const updatedUser = await api.deletePaymentMethod(currentUser.email, paymentMethodId);
+        if (updatedUser) {
+             setCurrentUser(updatedUser);
         }
     }, [currentUser]);
 
-    const handleDeleteAccount = useCallback((email: string) => {
-        const userIndex = mockUsers.findIndex(u => u.email === email);
-        if (userIndex > -1) {
-            mockUsers.splice(userIndex, 1);
+    const handleDeleteAccount = useCallback(async (email: string) => {
+        const result = await api.deleteAccount(email);
+        if (result) {
             handleLogout();
             alert('Tu cuenta ha sido eliminada exitosamente.');
             return true;
@@ -333,6 +238,13 @@ const App: React.FC = () => {
     }, [cart]);
 
     const renderPage = () => {
+        if (isLoading) {
+            return (
+                <div className="flex justify-center items-center h-64">
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+                </div>
+            );
+        }
         switch (currentPage) {
             case 'home':
                 return <HomePage products={products} onAddToCart={addToCart} onViewDetails={handleViewDetails} />;
