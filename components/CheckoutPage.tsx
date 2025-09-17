@@ -119,7 +119,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, subtotal, curren
                                        <VisaIcon /> <MastercardIcon />
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <input type="text" placeholder="MM / AA" value={card.expiry} onChange={handleExpiryChange} required className={inputClasses}/>
                                     <input type="text" placeholder="CVC" value={card.cvc} onChange={e => setCard({...card, cvc: e.target.value.replace(/[^\d]/g, '').substring(0, 4)})} required className={inputClasses}/>
                                 </div>
@@ -136,7 +136,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, subtotal, curren
                                 </select>
                                 <input type="text" placeholder="Dirección línea 1" value={address.line1} onChange={e => setAddress({...address, line1: e.target.value})} required className={inputClasses}/>
                                 <input type="text" placeholder="Dirección línea 2 (opcional)" value={address.line2} onChange={e => setAddress({...address, line2: e.target.value})} className={inputClasses}/>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <input type="text" placeholder="Distrito" value={address.district} onChange={e => setAddress({...address, district: e.target.value})} required className={inputClasses}/>
                                     <input type="text" placeholder="Código Postal" value={address.postalCode} onChange={e => setAddress({...address, postalCode: e.target.value})} required className={inputClasses}/>
                                 </div>

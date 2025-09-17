@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { User, Order, Address, PaymentMethod } from '../types';
 
@@ -17,6 +18,7 @@ interface AccountPageProps {
     onDeleteAddress: (addressId: number) => void;
     onAddPaymentMethod: (paymentData: Omit<PaymentMethod, 'id'>) => void;
     onDeletePaymentMethod: (paymentMethodId: number) => void;
+    onDeleteAccount: (email: string) => void;
     onLogout: () => void;
 }
 
@@ -28,6 +30,9 @@ const SupportIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-
 const LogoutIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>);
 const VisaIcon = () => (<svg className="w-12 h-auto" viewBox="0 0 38 23"><path d="M35 0H3C1.3 0 0 1.3 0 3v17c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z" fill="#1A1F71"/><path d="M12.9 6.8c-.3-.3-.7-.4-1.2-.4H8.2c-.5 0-.9.2-1.2.5-.3.3-.4.7-.4 1.1 0 .5.2.9.5 1.2.3.3.7.4 1.1.4h1.9c.4 0 .8-.2 1.1-.4.3-.3.4-.6.4-1s-.2-.8-.5-1.1zM11.5 16V6.2h2.2l1.9 6.8c.1.3.2.7.3 1.1.1-.4.2-.8.3-1.1l1.9-6.8h2.2V16h-2V8.7c0-.4-.1-.8-.1-1.2 0-.4-.1-.8-.1-1.2l-1.7 6.3h-1.5L13.6 6.3c0 .4-.1.8-.1 1.2 0 .4-.1.8-.1 1.2V16h-2z" fill="#fff"/></svg>);
 const MastercardIcon = () => (<svg className="w-12 h-auto" viewBox="0 0 38 23"><path d="M35 0H3C1.3 0 0 1.3 0 3v17c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z" fill="#222"/><circle cx="15" cy="11.5" r="5" fill="#EB001B"/><circle cx="23" cy="11.5" r="5" fill="#F79E1B"/><path d="M20 11.5a5.8 5.8 0 01-5 5.7 5.8 5.8 0 000-11.4 5.8 5.8 0 005 5.7z" fill="#FF5F00"/></svg>);
+const EyeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>;
+const EyeOffIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 1.274-4.057 5.064 7 9.542-7 .847 0 1.673.124 2.468.352M7.5 7.5l12 12" /></svg>;
+
 
 const statusColors: { [key in Order['status']]: string } = {
     Procesando: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
@@ -53,7 +58,7 @@ const AccordionItem: React.FC<{ question: string; answer: string; }> = ({ questi
 };
 
 
-const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateUser, onAddAddress, onUpdateAddress, onDeleteAddress, onAddPaymentMethod, onDeletePaymentMethod, onLogout }) => {
+const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateUser, onAddAddress, onUpdateAddress, onDeleteAddress, onAddPaymentMethod, onDeletePaymentMethod, onDeleteAccount, onLogout }) => {
     const [activeTab, setActiveTab] = useState<'profile' | 'history' | 'addresses' | 'payment' | 'support'>('profile');
     const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
     
@@ -66,6 +71,12 @@ const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateU
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [profileError, setProfileError] = useState('');
+    const [passwordVisibility, setPasswordVisibility] = useState({
+        current: false,
+        new: false,
+        confirm: false,
+    });
+
 
     // Address Management State
     const [showAddressForm, setShowAddressForm] = useState(false);
@@ -78,6 +89,8 @@ const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateU
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [paymentMethodToDelete, setPaymentMethodToDelete] = useState<number | null>(null);
 
+    // Delete Account State
+    const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
 
     // Support Form State
     const [supportSubject, setSupportSubject] = useState('');
@@ -99,6 +112,7 @@ const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateU
         setNewPassword('');
         setConfirmPassword('');
         setProfileError('');
+        setPasswordVisibility({ current: false, new: false, confirm: false });
     };
 
     const handleSaveProfile = (e: React.FormEvent) => {
@@ -117,6 +131,10 @@ const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateU
         }
     };
     
+    const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
+        setPasswordVisibility(prev => ({ ...prev, [field]: !prev[field] }));
+    };
+
     const handleAddNewAddress = () => { setEditingAddress(emptyAddress); setShowAddressForm(true); };
     const handleEditAddress = (address: Address) => { setEditingAddress(address); setShowAddressForm(true); };
 
@@ -185,6 +203,7 @@ const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateU
     };
     
     const inputClasses = "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200";
+    const passwordInputClasses = `${inputClasses} pr-10`;
 
     return (
         <div className="max-w-6xl mx-auto">
@@ -208,12 +227,26 @@ const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateU
                             {!isEditingProfile ? (
                                 <><h2 className="text-3xl font-bold text-text-primary dark:text-gray-100 mb-6">Información del Perfil</h2><div className="space-y-6"><div><label className="text-sm font-medium text-text-secondary dark:text-gray-400">Nombre Completo</label><p className="text-lg text-text-primary dark:text-gray-200">{user.name}</p></div><div><label className="text-sm font-medium text-text-secondary dark:text-gray-400">Correo Electrónico</label><p className="text-lg text-text-primary dark:text-gray-200">{user.email}</p></div><div><label className="text-sm font-medium text-text-secondary dark:text-gray-400">Número de Teléfono</label><p className="text-lg text-text-primary dark:text-gray-200">{user.phone || 'No especificado'}</p></div><div className="pt-4"><button onClick={handleEditProfileToggle} className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg">Editar Perfil</button></div></div></>
                             ) : (
-                                <><h2 className="text-3xl font-bold text-text-primary dark:text-gray-100 mb-6">Editar Perfil</h2><form onSubmit={handleSaveProfile} className="space-y-6"><div><label htmlFor="editedName" className="block text-sm font-medium text-text-primary dark:text-gray-300">Nombre Completo</label><input id="editedName" type="text" value={editedName} onChange={(e) => setEditedName(e.target.value)} required className={inputClasses}/></div><div><label htmlFor="editedEmail" className="block text-sm font-medium text-text-primary dark:text-gray-300">Correo Electrónico</label><input id="editedEmail" type="email" value={editedEmail} onChange={(e) => setEditedEmail(e.target.value)} required className={inputClasses}/></div><div><label htmlFor="editedPhone" className="block text-sm font-medium text-text-primary dark:text-gray-300">Número de Teléfono</label><input id="editedPhone" type="tel" value={editedPhone} onChange={(e) => setEditedPhone(e.target.value)} required className={inputClasses}/></div><div className="pt-4 border-t dark:border-gray-700"><h3 className="text-lg font-semibold text-text-primary dark:text-gray-200 mt-4 mb-2">Cambiar Contraseña (opcional)</h3><div className="space-y-4"><div><label htmlFor="currentPassword" className="dark:text-gray-300">Contraseña Actual</label><input id="currentPassword" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className={inputClasses}/></div><div><label htmlFor="newPassword" className="dark:text-gray-300">Nueva Contraseña</label><input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className={inputClasses}/></div><div><label htmlFor="confirmPassword" className="dark:text-gray-300">Confirmar Nueva Contraseña</label><input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={inputClasses}/></div></div></div>{profileError && <p className="text-sm text-red-600 font-medium">{profileError}</p>}<div className="pt-4 flex items-center space-x-4"><button type="submit" className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg">Guardar Cambios</button><button type="button" onClick={handleEditProfileToggle} className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-6 rounded-lg">Cancelar</button></div></form></>
+                                <><h2 className="text-3xl font-bold text-text-primary dark:text-gray-100 mb-6">Editar Perfil</h2><form onSubmit={handleSaveProfile} className="space-y-6"><div><label htmlFor="editedName" className="block text-sm font-medium text-text-primary dark:text-gray-300">Nombre Completo</label><input id="editedName" type="text" value={editedName} onChange={(e) => setEditedName(e.target.value)} required className={inputClasses}/></div><div><label htmlFor="editedEmail" className="block text-sm font-medium text-text-primary dark:text-gray-300">Correo Electrónico</label><input id="editedEmail" type="email" value={editedEmail} onChange={(e) => setEditedEmail(e.target.value)} required className={inputClasses}/></div><div><label htmlFor="editedPhone" className="block text-sm font-medium text-text-primary dark:text-gray-300">Número de Teléfono</label><input id="editedPhone" type="tel" value={editedPhone} onChange={(e) => setEditedPhone(e.target.value)} required className={inputClasses}/></div><div className="pt-4 border-t dark:border-gray-700"><h3 className="text-lg font-semibold text-text-primary dark:text-gray-200 mt-4 mb-2">Cambiar Contraseña (opcional)</h3><div className="space-y-4"><div><label htmlFor="currentPassword" className="dark:text-gray-300">Contraseña Actual</label><div className="relative"><input id="currentPassword" type={passwordVisibility.current ? 'text' : 'password'} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className={passwordInputClasses}/><button type="button" onClick={() => togglePasswordVisibility('current')} className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">{passwordVisibility.current ? <EyeOffIcon/> : <EyeIcon/>}</button></div></div><div><label htmlFor="newPassword" className="dark:text-gray-300">Nueva Contraseña</label><div className="relative"><input id="newPassword" type={passwordVisibility.new ? 'text' : 'password'} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className={passwordInputClasses}/><button type="button" onClick={() => togglePasswordVisibility('new')} className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">{passwordVisibility.new ? <EyeOffIcon/> : <EyeIcon/>}</button></div></div><div><label htmlFor="confirmPassword" className="dark:text-gray-300">Confirmar Nueva Contraseña</label><div className="relative"><input id="confirmPassword" type={passwordVisibility.confirm ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={passwordInputClasses}/><button type="button" onClick={() => togglePasswordVisibility('confirm')} className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">{passwordVisibility.confirm ? <EyeOffIcon/> : <EyeIcon/>}</button></div></div></div></div>{profileError && <p className="text-sm text-red-600 font-medium">{profileError}</p>}<div className="pt-4 flex items-center space-x-4"><button type="submit" className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg">Guardar Cambios</button><button type="button" onClick={handleEditProfileToggle} className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-6 rounded-lg">Cancelar</button></div></form></>
                             )}
+                            <div className="mt-8 pt-6 border-t border-red-500/30 dark:border-red-500/20">
+                                <h3 className="text-xl font-bold text-red-600 dark:text-red-500">Zona de Peligro</h3>
+                                <p className="mt-2 text-sm text-text-secondary dark:text-gray-400">
+                                    La eliminación de tu cuenta es una acción permanente e irreversible. Perderás todo tu historial de pedidos y direcciones guardadas.
+                                </p>
+                                <div className="mt-4">
+                                    <button
+                                        onClick={() => setIsDeleteAccountModalOpen(true)}
+                                        className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                                    >
+                                        Eliminar Cuenta
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
                     {activeTab === 'history' && (
-                        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md"><h2 className="text-3xl font-bold text-text-primary dark:text-gray-100 mb-6">Historial de Pedidos</h2>{orderHistory.length > 0 ? (<div className="space-y-4">{orderHistory.map(order => (<div key={order.id} className="border dark:border-gray-700 rounded-lg overflow-hidden"><button className="w-full p-4 bg-gray-50 hover:bg-gray-100 dark:bg-gray-900/50 dark:hover:bg-gray-700/70 flex flex-col md:flex-row justify-between items-start md:items-center text-left" onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}><div className="mb-2 md:mb-0"><p className="font-bold text-text-primary dark:text-gray-200">Pedido #{order.id}</p><p className="text-sm text-text-secondary dark:text-gray-400">Fecha: {order.date}</p></div><div className="flex items-center gap-4"><p className="font-semibold text-text-primary dark:text-white">${order.total.toFixed(2)}</p><span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusColors[order.status]}`}>{order.status}</span><span className={`transform transition-transform duration-300 ${expandedOrder === order.id ? 'rotate-180' : ''}`}><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></span></div></button>{expandedOrder === order.id && (<div className="p-4 border-t dark:border-gray-700"><h4 className="font-semibold mb-2 text-text-primary dark:text-gray-200">Detalles del Pedido:</h4>{order.items.map(item => (<div key={item.id} className="flex items-center justify-between py-2 border-b dark:border-gray-700 last:border-b-0"><div className="flex items-center gap-3"><img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded"/><div><p className="text-text-primary dark:text-gray-300">{item.name}</p><p className="text-sm text-text-secondary dark:text-gray-400">{item.quantity} x ${item.price.toFixed(2)}</p></div></div><p className="font-medium text-text-primary dark:text-white">${(item.quantity * item.price).toFixed(2)}</p></div>))}</div>)}</div>))}</div>) : (<p className="text-text-secondary dark:text-gray-400">Aún no has realizado ningún pedido.</p>)}</div>
+                        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md"><h2 className="text-3xl font-bold text-text-primary dark:text-gray-100 mb-6">Historial de Pedidos</h2>{orderHistory.length > 0 ? (<div className="space-y-4">{orderHistory.map(order => (<div key={order.id} className="border dark:border-gray-700 rounded-lg overflow-hidden"><button className="w-full p-4 bg-gray-50 hover:bg-gray-100 dark:bg-gray-900/50 dark:hover:bg-gray-700/70 flex flex-col md:flex-row justify-between items-start md:items-center text-left" onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}><div className="mb-2 md:mb-0"><p className="font-bold text-text-primary dark:text-gray-200">Pedido #{order.id}</p><p className="text-sm text-text-secondary dark:text-gray-400">Fecha: {order.date}</p></div><div className="flex items-center gap-4"><p className="font-semibold text-text-primary dark:text-white">${order.total.toFixed(2)}</p><span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusColors[order.status]}`}>{order.status}</span><span className={`transform transition-transform duration-300 ${expandedOrder === order.id ? 'rotate-180' : ''}`}><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></span></div></button>{expandedOrder === order.id && (<div className="p-4 border-t dark:border-gray-700"><h4 className="font-semibold mb-2 text-text-primary dark:text-gray-200">Detalles del Pedido:</h4>{order.items.map(item => (<div key={item.id} className="flex flex-col items-start sm:flex-row sm:items-center justify-between gap-2 py-2 border-b dark:border-gray-700 last:border-b-0"><div className="flex items-center gap-3"><img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded"/><div><p className="text-text-primary dark:text-gray-300">{item.name}</p><p className="text-sm text-text-secondary dark:text-gray-400">{item.quantity} x ${item.price.toFixed(2)}</p></div></div><p className="font-medium text-text-primary dark:text-white self-end sm:self-center">${(item.quantity * item.price).toFixed(2)}</p></div>))}</div>)}</div>))}</div>) : (<p className="text-text-secondary dark:text-gray-400">Aún no has realizado ningún pedido.</p>)}</div>
                     )}
                     {activeTab === 'addresses' && (
                         <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md"><div className="flex justify-between items-center mb-6"><h2 className="text-3xl font-bold text-text-primary dark:text-gray-100">Mis Direcciones</h2>{!showAddressForm && <button onClick={handleAddNewAddress} className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg">Añadir Dirección</button>}</div>{!showAddressForm ? (<div className="space-y-4">{(user.addresses && user.addresses.length > 0) ? user.addresses.map(addr => (<div key={addr.id} className="p-4 border dark:border-gray-700 rounded-lg flex justify-between items-start"><div><p className="font-semibold text-text-primary dark:text-gray-200">{addr.street}</p><p className="text-text-secondary dark:text-gray-400">{addr.city}, {addr.state} {addr.postalCode}</p><p className="text-text-secondary dark:text-gray-400">{addr.country}</p></div><div className="flex items-center space-x-2"><button onClick={() => handleEditAddress(addr)} className="text-blue-600 hover:underline">Editar</button><button onClick={() => onDeleteAddress(addr.id)} className="text-red-600 hover:underline">Eliminar</button></div></div>)) : <p className="text-text-secondary dark:text-gray-400">No tienes ninguna dirección guardada.</p>}</div>) : (<form onSubmit={handleSaveAddress} className="space-y-4 p-4 border dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/50"><h3 className="text-xl font-bold text-text-primary dark:text-gray-200">{'id' in editingAddress! ? 'Editar' : 'Añadir Nueva'} Dirección</h3><div><label className="dark:text-gray-300">Calle</label><input type="text" value={editingAddress?.street} onChange={e => setEditingAddress({...editingAddress!, street: e.target.value})} required className={inputClasses}/></div><div><label className="dark:text-gray-300">Ciudad</label><input type="text" value={editingAddress?.city} onChange={e => setEditingAddress({...editingAddress!, city: e.target.value})} required className={inputClasses}/></div><div><label className="dark:text-gray-300">Estado/Provincia</label><input type="text" value={editingAddress?.state} onChange={e => setEditingAddress({...editingAddress!, state: e.target.value})} required className={inputClasses}/></div><div><label className="dark:text-gray-300">Código Postal</label><input type="text" value={editingAddress?.postalCode} onChange={e => setEditingAddress({...editingAddress!, postalCode: e.target.value})} required className={inputClasses}/></div><div><label className="dark:text-gray-300">País</label><input type="text" value={editingAddress?.country} onChange={e => setEditingAddress({...editingAddress!, country: e.target.value})} required className={inputClasses}/></div><div className="flex items-center space-x-4 pt-2"><button type="submit" className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg">Guardar</button><button type="button" onClick={handleCancelAddressForm} className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-6 rounded-lg">Cancelar</button></div></form>)}</div>
@@ -301,6 +334,27 @@ const AccountPage: React.FC<AccountPageProps> = ({ user, orderHistory, onUpdateU
                             </button>
                             <button onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
                                 Eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {isDeleteAccountModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 dark:bg-opacity-80 z-50 flex items-center justify-center p-4" aria-modal="true" role="dialog">
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl max-w-sm w-full transform transition-all" role="document">
+                        <h3 className="text-xl font-bold text-text-primary dark:text-white">¿Estás seguro?</h3>
+                        <p className="mt-4 text-text-secondary dark:text-gray-400">
+                            Estás a punto de eliminar tu cuenta permanentemente. Esta acción es irreversible y todos tus datos, incluyendo historial de pedidos y direcciones, se perderán.
+                        </p>
+                        <div className="mt-6 flex justify-end space-x-4">
+                            <button onClick={() => setIsDeleteAccountModalOpen(false)} className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg transition-colors">
+                                Cancelar
+                            </button>
+                            <button onClick={() => {
+                                onDeleteAccount(user.email);
+                                setIsDeleteAccountModalOpen(false);
+                            }} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                                Sí, Eliminar Cuenta
                             </button>
                         </div>
                     </div>

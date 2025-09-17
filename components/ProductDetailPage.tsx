@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import type { Product, User } from '../types';
 import StarRating from './StarRating';
@@ -173,7 +172,7 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ product, allProdu
                     )}
                 </div>
                 <div className="flex flex-col justify-center">
-                    <h1 className="text-4xl font-extrabold text-text-primary dark:text-white">{product.name}</h1>
+                    <h1 className="text-3xl md:text-4xl font-extrabold text-text-primary dark:text-white">{product.name}</h1>
                     <p className="text-lg text-text-secondary dark:text-gray-400 mt-2">{product.category}</p>
                     <div className="flex items-center my-4">
                         <StarRating rating={product.rating} />
@@ -181,7 +180,7 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ product, allProdu
                     </div>
                     <p className="text-text-primary dark:text-gray-300 leading-relaxed my-4">{product.description}</p>
                     <div className="flex items-baseline space-x-4 my-4">
-                        <span className="text-5xl font-bold text-text-primary dark:text-white">${product.price.toFixed(2)}</span>
+                        <span className="text-4xl md:text-5xl font-bold text-text-primary dark:text-white">${product.price.toFixed(2)}</span>
                     </div>
                     <div className="flex items-center space-x-4 mt-4">
                         <button 
