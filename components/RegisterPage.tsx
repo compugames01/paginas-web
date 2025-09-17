@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 
 interface RegisterPageProps {
-    onRegister: (name: string, email: string, password: string, phone: string) => boolean;
+    // FIX: Changed return type from 'boolean' to 'Promise<boolean>' to match async function
+    onRegister: (name: string, email: string, password: string, phone: string) => Promise<boolean>;
     onNavigateToLogin: () => void;
 }
 

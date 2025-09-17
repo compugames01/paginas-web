@@ -34,6 +34,40 @@ const mockUsers: (User & { password: string; addresses?: Address[]; paymentMetho
     }
 ];
 
+/**
+ * Simulates sending a welcome email to a new user.
+ * In a real application, this would make an API call to a backend service.
+ * @param email The recipient's email address.
+ * @param name The recipient's name.
+ */
+const sendWelcomeEmail = async (email: string, name: string): Promise<void> => {
+    console.log(`Simulating sending welcome email to ${email}...`);
+    
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 500)); 
+    
+    const emailContent = `
+    -----------------------------------------
+    To: ${email}
+    From: no-reply@abarrotesfresco.com
+    Subject: ¡Bienvenido a Abarrotes Fresco!
+
+    Hola ${name},
+
+    ¡Gracias por registrarte en Abarrotes Fresco! Estamos muy contentos de tenerte con nosotros.
+    Explora nuestro catálogo y descubre la frescura y calidad que tenemos para ofrecerte.
+
+    ¡Felices compras!
+
+    El equipo de Abarrotes Fresco
+    -----------------------------------------
+    `;
+
+    console.log("Email content:");
+    console.log(emailContent.trim());
+    console.log(`Welcome email successfully "sent" to ${name} <${email}>.`);
+};
+
 
 const App: React.FC = () => {
     const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -80,7 +114,7 @@ const App: React.FC = () => {
         return false;
     }, []);
 
-    const handleRegister = useCallback((name: string, email: string, password: string, phone: string): boolean => {
+    const handleRegister = useCallback(async (name: string, email: string, password: string, phone: string): Promise<boolean> => {
         if (mockUsers.some(u => u.email === email)) {
             alert('Este correo electrónico ya está registrado.');
             return false;
@@ -88,6 +122,9 @@ const App: React.FC = () => {
         const newUser = { name, email, password, phone: `+51 ${phone}`, addresses: [], paymentMethods: [] };
         mockUsers.push(newUser);
         setCurrentUser({ name, email, phone: `+51 ${phone}`, addresses: [], paymentMethods: [] });
+        
+        await sendWelcomeEmail(email, name);
+
         setCurrentPage('home');
         alert('¡Registro exitoso! Has iniciado sesión y se ha enviado un correo de bienvenida.');
         return true;
