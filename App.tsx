@@ -14,6 +14,7 @@ import ProductDetailPage from './components/ProductDetailPage';
 import WishlistPage from './components/WishlistPage';
 import ForgotPasswordPage from './components/ForgotPasswordPage';
 import ResetPasswordPage from './components/ResetPasswordPage';
+import ContactPage from './components/ContactPage';
 import { Page, CartItem, Product, User, Order, Review, Address, PaymentMethod } from './types';
 import * as api from './services/api';
 
@@ -365,6 +366,8 @@ const App: React.FC = () => {
             case 'wishlist':
                  const wishlistProducts = products.filter(p => wishlist.includes(p.id));
                  return <WishlistPage products={wishlistProducts} onToggleWishlist={handleToggleWishlist} onAddToCart={addToCart} onViewDetails={handleViewDetails} />;
+            case 'contact':
+                return <ContactPage />;
             case 'account':
                 if (!currentUser) {
                     return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setCurrentPage('register')} onNavigateToForgotPassword={() => setCurrentPage('forgotPassword')} />;

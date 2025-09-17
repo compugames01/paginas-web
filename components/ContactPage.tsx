@@ -1,13 +1,14 @@
+
 import React, { useState } from 'react';
 
 const InfoCard: React.FC<{ icon: JSX.Element; title: string; children: React.ReactNode }> = ({ icon, title, children }) => (
-    <div className="bg-white p-6 rounded-lg shadow-lg flex items-start space-x-4">
-        <div className="flex-shrink-0 w-12 h-12 bg-primary-light text-primary rounded-full flex items-center justify-center">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg flex items-start space-x-4">
+        <div className="flex-shrink-0 w-12 h-12 bg-primary-light dark:bg-primary/20 text-primary dark:text-primary-light rounded-full flex items-center justify-center">
             {icon}
         </div>
         <div>
-            <h3 className="text-xl font-bold text-gray-800">{title}</h3>
-            <div className="text-text-secondary mt-1">{children}</div>
+            <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">{title}</h3>
+            <div className="text-text-secondary dark:text-gray-400 mt-1">{children}</div>
         </div>
     </div>
 );
@@ -39,12 +40,12 @@ const AccordionItem: React.FC<{ question: string; answer: string; }> = ({ questi
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <div className="border-b">
+        <div className="border-b dark:border-gray-700">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex justify-between items-center text-left py-4 px-2 hover:bg-gray-100 focus:outline-none"
+                className="w-full flex justify-between items-center text-left py-4 px-2 hover:bg-gray-100 dark:hover:bg-gray-700/50 focus:outline-none"
             >
-                <span className="text-lg font-medium text-gray-800">{question}</span>
+                <span className="text-lg font-medium text-gray-800 dark:text-gray-200">{question}</span>
                 <span className={`transform transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -52,7 +53,7 @@ const AccordionItem: React.FC<{ question: string; answer: string; }> = ({ questi
                 </span>
             </button>
             <div className={`overflow-hidden transition-max-height duration-500 ease-in-out ${isOpen ? 'max-h-96' : 'max-h-0'}`}>
-                <div className="p-4 bg-gray-50 text-text-secondary">
+                <div className="p-4 bg-gray-50 dark:bg-gray-700/30 text-text-secondary dark:text-gray-400">
                     {answer}
                 </div>
             </div>
@@ -64,8 +65,8 @@ const ContactPage: React.FC = () => {
     return (
         <div className="space-y-16">
             <div className="text-center">
-                <h1 className="text-4xl md:text-5xl font-extrabold text-gray-800">Contáctanos</h1>
-                <p className="mt-4 text-lg text-text-secondary">Estamos aquí para ayudarte. ¡Visítanos!</p>
+                <h1 className="text-4xl md:text-5xl font-extrabold text-gray-800 dark:text-gray-100">Contáctanos</h1>
+                <p className="mt-4 text-lg text-text-secondary dark:text-gray-400">Estamos aquí para ayudarte. ¡Visítanos!</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
@@ -98,8 +99,8 @@ const ContactPage: React.FC = () => {
             </div>
 
             <div className="max-w-4xl mx-auto">
-                <h2 className="text-4xl font-extrabold text-gray-800 text-center mb-8">Preguntas Frecuentes</h2>
-                <div className="bg-white rounded-lg shadow-lg">
+                <h2 className="text-4xl font-extrabold text-gray-800 dark:text-gray-100 text-center mb-8">Preguntas Frecuentes</h2>
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
                     {faqs.map((faq, index) => (
                         <AccordionItem key={index} question={faq.question} answer={faq.answer} />
                     ))}

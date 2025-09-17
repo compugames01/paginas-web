@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { Page, User } from '../types';
 
@@ -89,6 +90,7 @@ const Header: React.FC<HeaderProps> = ({ setCurrentPage, cartItemCount, wishlist
                             <div className="ml-10 flex items-baseline space-x-4">
                                 <NavLink onClick={() => setCurrentPage('home')}>Inicio</NavLink>
                                 <NavLink onClick={() => setCurrentPage('catalog')}>Catálogo</NavLink>
+                                <NavLink onClick={() => setCurrentPage('contact')}>Contacto</NavLink>
                             </div>
                         </div>
                     </div>
@@ -154,6 +156,7 @@ const Header: React.FC<HeaderProps> = ({ setCurrentPage, cartItemCount, wishlist
                     <div className="flex flex-col items-center justify-center flex-grow text-center space-y-6">
                         <button onClick={() => handleMobileLinkClick('home')} className="text-3xl font-bold text-white hover:text-accent transition-colors">Inicio</button>
                         <button onClick={() => handleMobileLinkClick('catalog')} className="text-3xl font-bold text-white hover:text-accent transition-colors">Catálogo</button>
+                        <button onClick={() => handleMobileLinkClick('contact')} className="text-3xl font-bold text-white hover:text-accent transition-colors">Contacto</button>
                         
                         <div className="border-t border-gray-700 w-1/2 my-6"></div>
 
