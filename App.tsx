@@ -13,6 +13,7 @@ import ConfirmationPage from './components/ConfirmationPage';
 import ProductDetailPage from './components/ProductDetailPage';
 import WishlistPage from './components/WishlistPage';
 import ForgotPasswordPage from './components/ForgotPasswordPage';
+import ResetPasswordPage from './components/ResetPasswordPage';
 import { Page, CartItem, Product, User, Order, Review, Address, PaymentMethod } from './types';
 import * as api from './services/api';
 
@@ -41,6 +42,7 @@ const App: React.FC = () => {
         const saved = localStorage.getItem('allOrderHistories');
         return saved ? JSON.parse(saved) : {};
     });
+    const [passwordResetInfo, setPasswordResetInfo] = useState<{ email: string; token: string } | null>(null);
 
     const [theme, setTheme] = useState<'light' | 'dark'>(() => {
         if (typeof window !== 'undefined' && localStorage.theme) {
@@ -114,9 +116,9 @@ const App: React.FC = () => {
         const result = await api.register(name, email, password, phone);
         if (result.success && result.user) {
             setCurrentUser(result.user);
-            await api.sendWelcomeEmail(email, name);
+            await api.sendVerificationEmail(email, name);
             setCurrentPage('home');
-            alert('¡Registro exitoso! Has iniciado sesión y se ha enviado un correo de bienvenida.');
+            alert('¡Registro exitoso! Se ha enviado un correo de verificación a tu dirección de correo electrónico.');
             return true;
         } else {
             alert(result.message);
@@ -130,6 +132,24 @@ const App: React.FC = () => {
         setWishlist([]);
         setCurrentPage('home');
     }, []);
+
+    const handleNavigateToResetPassword = useCallback((email: string, token: string) => {
+        setPasswordResetInfo({ email, token });
+        setCurrentPage('resetPassword');
+    }, []);
+    
+    const handleResetPassword = useCallback(async (newPassword: string): Promise<{ success: boolean; message: string }> => {
+        if (!passwordResetInfo) {
+            return { success: false, message: 'No se encontró la información para restablecer la contraseña. Por favor, inténtalo de nuevo.' };
+        }
+        const result = await api.resetPassword(passwordResetInfo.email, passwordResetInfo.token, newPassword);
+        if (result.success) {
+            alert(result.message);
+            setPasswordResetInfo(null);
+            setCurrentPage('login');
+        }
+        return result;
+    }, [passwordResetInfo]);
 
     const addToCart = useCallback((product: Product) => {
         setCart(prevCart => {
@@ -335,7 +355,9 @@ const App: React.FC = () => {
             case 'register':
                 return <RegisterPage onRegister={handleRegister} onNavigateToLogin={() => setCurrentPage('login')} />;
             case 'forgotPassword':
-                return <ForgotPasswordPage onNavigateToLogin={() => setCurrentPage('login')} />;
+                return <ForgotPasswordPage onNavigateToLogin={() => setCurrentPage('login')} onNavigateToResetPassword={handleNavigateToResetPassword} />;
+             case 'resetPassword':
+                return <ResetPasswordPage onResetPassword={handleResetPassword} onNavigateToLogin={() => setCurrentPage('login')} />;
             case 'confirmation':
                 return confirmedOrder ? <ConfirmationPage order={confirmedOrder} onGoHome={() => setCurrentPage('home')} /> : <HomePage products={products} onAddToCart={addToCart} onViewDetails={handleViewDetails} />;
             case 'productDetail':

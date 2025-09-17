@@ -176,6 +176,7 @@ export const mockUsers: (User & { password: string; addresses?: Address[]; payme
         email: 'user@example.com', 
         phone: '+51 987 654 321',
         password: 'Password123',
+        verified: true,
         addresses: [
             { id: 1, street: 'Calle Falsa 123', city: 'Ciudad Capital', state: 'Provincia Central', postalCode: '12345', country: 'País Ficticio' },
             { id: 2, street: 'Avenida Siempre Viva 742', city: 'Villa Ejemplo', state: 'Estado Modelo', postalCode: '54321', country: 'País Ficticio' },

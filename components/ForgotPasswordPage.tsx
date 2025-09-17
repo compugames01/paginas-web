@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
+import * as api from '../services/api';
 
 interface ForgotPasswordPageProps {
     onNavigateToLogin: () => void;
+    onNavigateToResetPassword: (email: string, token: string) => void;
 }
 
 const validateEmail = (email: string): boolean => {
@@ -11,23 +13,32 @@ const validateEmail = (email: string): boolean => {
     return re.test(String(email).toLowerCase());
 };
 
-const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNavigateToLogin }) => {
+const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNavigateToLogin, onNavigateToResetPassword }) => {
     const [email, setEmail] = useState('');
     const [emailError, setEmailError] = useState('');
     const [message, setMessage] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [resetInfo, setResetInfo] = useState<{ email: string; token: string } | null>(null);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setMessage('');
         setEmailError('');
+        setResetInfo(null);
 
         if (!validateEmail(email)) {
             setEmailError('Por favor, introduce un formato de correo electrónico válido.');
             return;
         }
-        
-        // Simulate sending an email
-        setMessage('Si existe una cuenta con este correo electrónico, recibirás un enlace para restablecer tu contraseña.');
+
+        setIsLoading(true);
+        const result = await api.sendPasswordResetEmail(email);
+        setIsLoading(false);
+
+        setMessage('Si existe una cuenta con este correo electrónico, recibirás un enlace para restablecer tu contraseña. Para fines de demostración, puedes hacer clic en el botón de abajo.');
+        if (result.success && result.token) {
+            setResetInfo({ email, token: result.token });
+        }
         setEmail('');
     };
 
@@ -43,17 +54,27 @@ const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNavigateToLog
                     </p>
                 </div>
                 {message ? (
-                     <div className="rounded-md bg-green-50 dark:bg-green-900/50 p-4">
-                        <div className="flex">
-                            <div className="flex-shrink-0">
-                                <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                </svg>
-                            </div>
-                            <div className="ml-3">
-                                <p className="text-sm font-medium text-green-800 dark:text-green-300">{message}</p>
+                    <div className="space-y-4">
+                        <div className="rounded-md bg-green-50 dark:bg-green-900/50 p-4">
+                            <div className="flex">
+                                <div className="flex-shrink-0">
+                                    <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div className="ml-3">
+                                    <p className="text-sm font-medium text-green-800 dark:text-green-300">{message}</p>
+                                </div>
                             </div>
                         </div>
+                        {resetInfo && (
+                             <button
+                                onClick={() => onNavigateToResetPassword(resetInfo.email, resetInfo.token)}
+                                className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-dark"
+                            >
+                                Continuar con el restablecimiento (Demo)
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
@@ -73,15 +94,16 @@ const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNavigateToLog
                                 />
                             </div>
                         </div>
-                        
+
                         {emailError && <p className="text-sm text-red-600 dark:text-red-400">{emailError}</p>}
-                        
+
                         <div>
                             <button
                                 type="submit"
-                                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-black bg-accent hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                                disabled={isLoading}
+                                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-black bg-accent hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:bg-yellow-300 dark:disabled:bg-yellow-700 disabled:cursor-not-allowed"
                             >
-                                Enviar Enlace de Restablecimiento
+                                {isLoading ? 'Enviando...' : 'Enviar Enlace de Restablecimiento'}
                             </button>
                         </div>
                     </form>

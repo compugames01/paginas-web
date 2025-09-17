@@ -1,5 +1,5 @@
 
-export type Page = 'home' | 'catalog' | 'cart' | 'login' | 'register' | 'confirmation' | 'productDetail' | 'wishlist' | 'checkout' | 'account' | 'forgotPassword';
+export type Page = 'home' | 'catalog' | 'cart' | 'login' | 'register' | 'confirmation' | 'productDetail' | 'wishlist' | 'checkout' | 'account' | 'forgotPassword' | 'resetPassword';
 
 export interface Address {
     id: number;
@@ -23,6 +23,7 @@ export interface User {
     phone?: string;
     addresses?: Address[];
     paymentMethods?: PaymentMethod[];
+    verified: boolean;
 }
 
 export interface Review {

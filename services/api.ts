@@ -105,7 +105,7 @@ export const register = (name: string, email: string, password: string, phone: s
                 resolve({ success: false, message: 'Este correo electrónico ya está registrado.', user: null });
                 return;
             }
-            const newUser: MockUserWithPassword = { name, email, password, phone: `+51 ${phone}`, addresses: [], paymentMethods: [] };
+            const newUser: MockUserWithPassword = { name, email, password, phone: `+51 ${phone}`, addresses: [], paymentMethods: [], verified: false };
             mockUsers.push(newUser);
             saveUsers();
             const { password: pw, ...userWithoutPassword } = newUser;
@@ -115,19 +115,27 @@ export const register = (name: string, email: string, password: string, phone: s
     });
 };
 
-export const sendWelcomeEmail = async (email: string, name: string): Promise<void> => {
-    console.log(`Simulating sending welcome email to ${email}...`);
+export const sendVerificationEmail = async (email: string, name: string): Promise<void> => {
+    console.log(`Simulating sending verification email to ${email}...`);
     await new Promise(resolve => setTimeout(resolve, 500));
+    // Simulate a verification token
+    const verificationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const verificationLink = `https://abarrotes-fresco.app/verify?token=${verificationToken}&email=${email}`;
+
     const emailContent = `
     -----------------------------------------
     To: ${email}
     From: no-reply@abarrotesfresco.com
-    Subject: ¡Bienvenido a Abarrotes Fresco!
+    Subject: Verifica tu cuenta en Abarrotes Fresco
 
     Hola ${name},
 
-    ¡Gracias por registrarte en Abarrotes Fresco! Estamos muy contentos de tenerte con nosotros.
-    Explora nuestro catálogo y descubre la frescura y calidad que tenemos para ofrecerte.
+    ¡Gracias por registrarte en Abarrotes Fresco!
+    Para completar tu registro y asegurar tu cuenta, por favor verifica tu dirección de correo electrónico haciendo clic en el siguiente enlace:
+
+    ${verificationLink}
+
+    Si no te registraste en nuestro sitio, por favor ignora este correo.
 
     ¡Felices compras!
 
@@ -136,7 +144,68 @@ export const sendWelcomeEmail = async (email: string, name: string): Promise<voi
     `;
     console.log("Email content:");
     console.log(emailContent.trim());
-    console.log(`Welcome email successfully "sent" to ${name} <${email}>.`);
+    console.log(`Verification email successfully "sent" to ${name} <${email}>.`);
+};
+
+export const sendPasswordResetEmail = (email: string): Promise<{ success: boolean; message: string; token: string | null }> => {
+    console.log(`API: Password reset request for ${email}...`);
+    return new Promise(resolve => {
+        setTimeout(() => {
+            const user = mockUsers.find(u => u.email === email);
+            if (user) {
+                const token = `RESET-${Math.random().toString(36).substring(2, 15)}`;
+                const resetLink = `https://abarrotes-fresco.app/reset-password?token=${token}&email=${email}`;
+                
+                const emailContent = `
+    -----------------------------------------
+    To: ${email}
+    From: no-reply@abarrotesfresco.com
+    Subject: Restablece tu contraseña de Abarrotes Fresco
+
+    Hola ${user.name},
+
+    Recibimos una solicitud para restablecer tu contraseña.
+    Haz clic en el siguiente enlace para establecer una nueva contraseña:
+
+    ${resetLink}
+
+    Si no solicitaste esto, puedes ignorar este correo de forma segura.
+
+    El equipo de Abarrotes Fresco
+    -----------------------------------------
+                `;
+                console.log("Email content:");
+                console.log(emailContent.trim());
+                console.log(`Password reset email "sent" to ${email}.`);
+                
+                resolve({ success: true, message: 'Se ha enviado un enlace de restablecimiento.', token });
+            } else {
+                // To prevent user enumeration, we send the same message whether the user exists or not.
+                console.log(`API: Password reset request for non-existent email ${email}. Responding with generic success message.`);
+                resolve({ success: true, message: 'Si existe una cuenta con este correo, recibirás un enlace.', token: null });
+            }
+        }, apiDelay);
+    });
+};
+
+export const resetPassword = (email: string, token: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+    console.log(`API: Attempting to reset password for ${email} with token ${token}...`);
+    return new Promise(resolve => {
+        setTimeout(() => {
+            // In a real app, the token would be validated against a database record.
+            // Here, we'll just check if it's a non-empty string starting with RESET- and find the user.
+            const userIndex = mockUsers.findIndex(u => u.email === email);
+            if (userIndex !== -1 && token && token.startsWith('RESET-')) {
+                mockUsers[userIndex].password = newPassword;
+                saveUsers();
+                console.log("API: Password reset successful.");
+                resolve({ success: true, message: 'Tu contraseña ha sido actualizada exitosamente.' });
+            } else {
+                console.log("API: Password reset failed. Invalid token or user not found.");
+                resolve({ success: false, message: 'El enlace de restablecimiento no es válido o ha expirado.' });
+            }
+        }, apiDelay);
+    });
 };
 
 export const sendOrderEmail = (email: string, order: Order): Promise<void> => {
