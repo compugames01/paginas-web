@@ -89,7 +89,7 @@ const App: React.FC = () => {
         mockUsers.push(newUser);
         setCurrentUser({ name, email, phone: `+51 ${phone}`, addresses: [], paymentMethods: [] });
         setCurrentPage('home');
-        alert('¡Registro exitoso! Has iniciado sesión.');
+        alert('¡Registro exitoso! Has iniciado sesión y se ha enviado un correo de bienvenida.');
         return true;
     }, []);
 
