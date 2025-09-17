@@ -16,13 +16,12 @@ const validateEmail = (email: string): boolean => {
 const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNavigateToLogin, onNavigateToResetPassword }) => {
     const [email, setEmail] = useState('');
     const [emailError, setEmailError] = useState('');
-    const [message, setMessage] = useState('');
+    const [emailSent, setEmailSent] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [resetInfo, setResetInfo] = useState<{ email: string; token: string } | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setMessage('');
         setEmailError('');
         setResetInfo(null);
 
@@ -35,11 +34,10 @@ const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNavigateToLog
         const result = await api.sendPasswordResetEmail(email);
         setIsLoading(false);
 
-        setMessage('Si existe una cuenta con este correo electrónico, recibirás un enlace para restablecer tu contraseña. Para fines de demostración, puedes hacer clic en el botón de abajo.');
+        setEmailSent(true);
         if (result.success && result.token) {
             setResetInfo({ email, token: result.token });
         }
-        setEmail('');
     };
 
     return (
@@ -50,11 +48,14 @@ const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNavigateToLog
                         Restablecer Contraseña
                     </h2>
                     <p className="mt-2 text-center text-sm text-text-secondary dark:text-gray-400">
-                        Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
+                        {emailSent 
+                            ? "Revisa tu bandeja de entrada para continuar."
+                            : "Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña."
+                        }
                     </p>
                 </div>
-                {message ? (
-                    <div className="space-y-4">
+                {emailSent ? (
+                    <div>
                         <div className="rounded-md bg-green-50 dark:bg-green-900/50 p-4">
                             <div className="flex">
                                 <div className="flex-shrink-0">
@@ -63,18 +64,24 @@ const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNavigateToLog
                                     </svg>
                                 </div>
                                 <div className="ml-3">
-                                    <p className="text-sm font-medium text-green-800 dark:text-green-300">{message}</p>
+                                    <p className="text-sm font-medium text-green-800 dark:text-green-300">
+                                        Si existe una cuenta con este correo electrónico, recibirás un enlace para restablecer tu contraseña.
+                                        {resetInfo && (
+                                            <span className="block mt-2">
+                                                Para esta demostración, puedes{' '}
+                                                <button
+                                                    onClick={() => onNavigateToResetPassword(resetInfo.email, resetInfo.token)}
+                                                    className="font-bold underline hover:text-green-600 dark:hover:text-green-200 focus:outline-none"
+                                                >
+                                                    hacer clic aquí
+                                                </button>
+                                                {' '}para continuar.
+                                            </span>
+                                        )}
+                                    </p>
                                 </div>
                             </div>
                         </div>
-                        {resetInfo && (
-                             <button
-                                onClick={() => onNavigateToResetPassword(resetInfo.email, resetInfo.token)}
-                                className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-dark"
-                            >
-                                Continuar con el restablecimiento (Demo)
-                            </button>
-                        )}
                     </div>
                 ) : (
                     <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
