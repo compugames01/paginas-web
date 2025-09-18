@@ -7,7 +7,7 @@ const { default: arcjet, shield, detectBot } = require("@arcjet/node");
 const aj = arcjet({
   // ARCJET_KEY automatically set by the Netlify integration
   // Log in at https://app.arcjet.com
-  key: process.env.ARCJET_KEY,
+  key: "ajkey_01k5dpnjp2egpapsr7tbenxe5s",
   rules: [
     // Block common attacks e.g. SQL injection, XSS, CSRF
     shield({
