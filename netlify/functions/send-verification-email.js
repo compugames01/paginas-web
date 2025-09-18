@@ -1,39 +1,7 @@
-// Protect against bots & common attacks e.g. SQL injection, XSS, CSRF
-const { default: arcjet, shield, detectBot } = require("@arcjet/node");
-
-const aj = arcjet({
-  // ARCJET_KEY automatically set by the Netlify integration
-  // Log in at https://app.arcjet.com
-  key: "ajkey_01k5dpnjp2egpapsr7tbenxe5s",
-  rules: [
-    // Block common attacks e.g. SQL injection, XSS, CSRF
-    shield({
-      // Will block requests. Use "DRY_RUN" to log only
-      mode: "LIVE",
-    }),
-    // Detect bots
-    detectBot({
-      mode: "LIVE", // will block requests. Use "DRY_RUN" to log only
-      // Block all bots except search engine crawlers. See the full list of bots
-      // for other options: https://arcjet.com/bot-list
-      allow: ["CATEGORY:SEARCH_ENGINE"],
-    }),
-  ],
-});
-
 // Esta función maneja el envío del correo electrónico de verificación.
 // Se ejecuta en un entorno de backend seguro de Node.js en Netlify.
 
 exports.handler = async function(event, context) {
-  const decision = await aj.protect(event);
-
-  if (decision.isDenied()) {
-    return {
-      statusCode: 403,
-      body: JSON.stringify({ error: "Forbidden" }),
-    };
-  }
-
   // Solo aceptamos solicitudes POST a esta función.
   if (event.httpMethod !== 'POST') {
     return {

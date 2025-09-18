@@ -278,14 +278,32 @@ const App: React.FC = () => {
         });
     }, [addToast]);
 
-    const handleCheckout = useCallback((
-        items: CartItem[], 
-        total: number, 
+    const handleCheckout = useCallback(async (
+        items: CartItem[],
+        total: number,
         shippingAddress: Address,
-        paymentMethod: PaymentMethod
+        paymentMethod: PaymentMethod,
+        isNewAddress: boolean,
+        isNewPayment: boolean
     ) => {
         if (items.length === 0 || !currentUser) return;
+
+        let finalUser = currentUser;
+        if (isNewAddress) {
+            const { id, ...newAddressData } = shippingAddress;
+            const updatedUser = await api.addAddress(finalUser.email, newAddressData);
+            if (updatedUser) finalUser = updatedUser;
+        }
+        if (isNewPayment) {
+            const { id, ...newPaymentData } = paymentMethod;
+            const updatedUser = await api.addPaymentMethod(finalUser.email, newPaymentData);
+            if (updatedUser) finalUser = updatedUser;
+        }
         
+        if (isNewAddress || isNewPayment) {
+            setCurrentUser(finalUser);
+        }
+
         const newOrder: Order = {
             id: `FRESCO-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
             items,
@@ -298,10 +316,10 @@ const App: React.FC = () => {
         
         setConfirmedOrder(newOrder);
         setAllOrderHistories(prev => {
-            const userHistory = prev[currentUser.email] || [];
+            const userHistory = prev[finalUser.email] || [];
             return {
                 ...prev,
-                [currentUser.email]: [...userHistory, newOrder]
+                [finalUser.email]: [...userHistory, newOrder]
             };
         });
         clearCart();
@@ -335,6 +353,15 @@ const App: React.FC = () => {
         const result = await api.updateUser(currentEmail, newName, newEmail, newPhone, currentPassword, newPassword);
         if (result.success && result.user) {
             setCurrentUser(result.user);
+            if (currentEmail !== newEmail) {
+                setAllOrderHistories(prev => {
+                    const newHistories = { ...prev };
+                    const userHistory = newHistories[currentEmail] || [];
+                    delete newHistories[currentEmail];
+                    newHistories[newEmail] = userHistory;
+                    return newHistories;
+                });
+            }
             addToast(result.message, 'success');
         } else {
             addToast(result.message, 'error');

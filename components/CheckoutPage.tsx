@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import type { CartItem, User, Address, PaymentMethod } from '../types';
 
@@ -5,7 +6,7 @@ interface CheckoutPageProps {
     cartItems: CartItem[];
     subtotal: number;
     currentUser: User | null;
-    onCheckout: (items: CartItem[], total: number, shippingAddress: Address, paymentMethod: PaymentMethod) => void;
+    onCheckout: (items: CartItem[], total: number, shippingAddress: Address, paymentMethod: PaymentMethod, isNewAddress: boolean, isNewPayment: boolean) => void;
     onBackToCart: () => void;
 }
 
@@ -37,8 +38,11 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, subtotal, curren
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
+        const isNewAddress = selectedAddressId === 'new';
+        const isNewPayment = selectedPaymentId === 'new';
+
         let shippingAddress: Address | null = null;
-        if (selectedAddressId === 'new') {
+        if (isNewAddress) {
             if (!newAddress.street || !newAddress.city || !newAddress.postalCode) {
                 alert('Por favor, complete todos los campos de la nueva dirección.');
                 return;
@@ -49,7 +53,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, subtotal, curren
         }
 
         let paymentMethod: PaymentMethod | null = null;
-        if (selectedPaymentId === 'new') {
+        if (isNewPayment) {
             if (!newCard.number || !newCard.expiry || !newCard.cvc || !newCard.name) {
                 alert('Por favor, complete todos los campos de la nueva tarjeta.');
                 return;
@@ -79,7 +83,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ cartItems, subtotal, curren
             return;
         }
 
-        onCheckout(cartItems, total, shippingAddress, paymentMethod);
+        onCheckout(cartItems, total, shippingAddress, paymentMethod, isNewAddress, isNewPayment);
     };
 
     const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {

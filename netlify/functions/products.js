@@ -1,30 +1,6 @@
 // Esta es tu primera función de backend. Se ejecuta en un entorno de Node.js seguro en Netlify.
 // A diferencia del código del frontend, este código NUNCA es visible para los usuarios en sus navegadores.
 
-// Protect against bots & common attacks e.g. SQL injection, XSS, CSRF
-const { default: arcjet, shield, detectBot } = require("@arcjet/node");
-
-const aj = arcjet({
-  // ARCJET_KEY automatically set by the Netlify integration
-  // Log in at https://app.arcjet.com
-  key: "ajkey_01k5dpnjp2egpapsr7tbenxe5s",
-  rules: [
-    // Block common attacks e.g. SQL injection, XSS, CSRF
-    shield({
-      // Will block requests. Use "DRY_RUN" to log only
-      mode: "LIVE",
-    }),
-    // Detect bots
-    detectBot({
-      mode: "LIVE", // will block requests. Use "DRY_RUN" to log only
-      // Block all bots except search engine crawlers. See the full list of bots
-      // for other options: https://arcjet.com/bot-list
-      allow: ["CATEGORY:SEARCH_ENGINE"],
-    }),
-  ],
-});
-
-
 // --- ¡AQUÍ ES DONDE CONECTAS TU BASE DE DATOS! ---
 // Este es el lugar seguro para poner tus credenciales y tu lógica de base de datos.
 //
@@ -209,15 +185,6 @@ const MOCK_PRODUCTS = [
 ];
 
 exports.handler = async function(event, context) {
-  const decision = await aj.protect(event);
-
-  if (decision.isDenied()) {
-    return {
-      statusCode: 403,
-      body: JSON.stringify({ error: "Forbidden" }),
-    };
-  }
-  
   const products = MOCK_PRODUCTS;
 
   // Devolvemos los productos como una respuesta JSON.
